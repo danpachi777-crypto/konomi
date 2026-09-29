@@ -1,0 +1,18 @@
+{
+  "name": "KONOMI — 好きから、似合うへ。",
+  "short_name": "KONOMI",
+  "description": "左右のスワイプから服の好みを見つけるアプリ",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#f4f0e8",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

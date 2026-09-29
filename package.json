@@ -1,0 +1,13 @@
+{
+  "name": "konomi-fashion-discovery",
+  "version": "0.1.0",
+  "private": true,
+  "description": "左右のスワイプから服の好みを見つけるモバイルファーストPWA",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
