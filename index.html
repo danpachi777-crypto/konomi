@@ -7,7 +7,7 @@
     <meta name="description" content="好きな服を左右にスワイプして、自分の好みと着こなしを見つけるアプリ" />
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=8" />
     <title>KONOMI — 好きから、似合うへ。</title>
   </head>
   <body>
@@ -17,14 +17,17 @@
           <span class="brand-mark">K</span>
           <span>KONOMI</span>
         </button>
-        <button class="text-button" type="button" id="aboutButton">素材について</button>
+        <button class="text-button" type="button" id="aboutButton">このサービスについて</button>
       </header>
 
-      <main id="app" tabindex="-1"></main>
+      <main id="app"></main>
 
       <nav class="bottom-nav" id="bottomNav" aria-label="メインメニュー" hidden>
         <button type="button" data-route="swipe" aria-label="診断">
           <span aria-hidden="true">◒</span><small>診断</small>
+        </button>
+        <button type="button" data-route="discover" aria-label="おすすめコーデ">
+          <span aria-hidden="true">✦</span><small>おすすめ</small>
         </button>
         <button type="button" data-route="saved" aria-label="好き">
           <span aria-hidden="true">♡</span><small>好き</small>
@@ -38,10 +41,10 @@
     <dialog id="aboutDialog" class="sheet-dialog">
       <div class="sheet-handle" aria-hidden="true"></div>
       <button class="dialog-close" type="button" aria-label="閉じる">×</button>
-      <p class="eyebrow">PHOTO POLICY</p>
-      <h2>素材について</h2>
-      <p>この試作版では、診断軸に合わせて新規生成したオリジナルのコーデ画像を表示しています。ブランドロゴや実在商品の画像は使用していません。</p>
-      <p>実在商品の掲載時は、販売店の公式APIまたは承認済みアフィリエイト素材へ切り替えます。</p>
+      <p class="eyebrow">ABOUT KONOMI</p>
+      <h2>このサービスについて</h2>
+      <p>診断用の54枚と、診断後に提案する別の40枚は、診断軸に合わせて新規生成したオリジナル素材です。初期設定で選んだ性別と診断結果に合わせて表示するルックを切り替えます。</p>
+      <p>診断後の商品提案は実在するアイテムです。購入前に公式ストアで最新の価格・在庫・サイズをご確認ください。</p>
       <div class="dialog-links">
         <a href="PHOTO_SOURCES.md" target="_blank">写真の管理記録</a>
       </div>
@@ -49,8 +52,11 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="data.js"></script>
-    <script src="logic.js"></script>
-    <script src="app.js"></script>
+    <script src="data.js?v=8"></script>
+    <script src="products.js?v=8"></script>
+    <script src="shops.js?v=8"></script>
+    <script src="recommendations.js?v=8"></script>
+    <script src="logic.js?v=8"></script>
+    <script src="app.js?v=8"></script>
   </body>
 </html>
