@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const { spawnSync } = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+const localPython = path.join(root, '.python', 'python.exe');
+const python = process.env.KONOMI_PYTHON || (fs.existsSync(localPython) ? localPython : 'python');
+const test = process.argv[2] === 'test';
+const args = test ? ['-m', 'unittest', 'discover', '-s', 'python_tests', '-v'] : ['scripts/analyze_photos.py'];
+const result = spawnSync(python, args, { cwd: root, stdio: 'inherit', windowsHide: true, env: { ...process.env, PYTHONUTF8: '1' } });
+if (result.error) console.error('Python could not start. Run scripts/setup-python.ps1 or set KONOMI_PYTHON.');
+process.exit(result.status ?? 1);

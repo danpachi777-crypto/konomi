@@ -93,35 +93,49 @@
     }, {});
   }
 
+  function countCategories(cards, likedIds) {
+    const liked = new Set(likedIds);
+    return cards.reduce((scores, card) => {
+      if (!liked.has(card.id) || !card.category) return scores;
+      scores[card.category] = (scores[card.category] || 0) + 1;
+      return scores;
+    }, {});
+  }
+
   function rankTags(scores) {
     return Object.entries(scores)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
       .map(([tag, count]) => ({ tag, count }));
   }
 
-  function getArchetype(scores) {
-    return rankArchetypes(scores)[0];
+  function getArchetype(scores, categoryScores = {}) {
+    return rankArchetypes(scores, categoryScores)[0];
   }
 
-  function rankArchetypes(scores) {
+  function rankArchetypes(scores, categoryScores = {}) {
     return ARCHETYPES
       .map((archetype) => ({
         ...archetype,
-        match: archetype.tags.reduce((sum, tag) => sum + (scores[tag] || 0), 0)
+        categoryMatch: categoryScores[archetype.name] || 0,
+        match: (categoryScores[archetype.name] || 0) * 8 +
+          archetype.tags.reduce((sum, tag) => sum + (scores[tag] || 0), 0)
       }))
       .sort((a, b) => b.match - a.match || a.name.localeCompare(b.name, "ja"));
   }
 
   function calculateProfile(cards, likedIds) {
+    cards = cards.filter((card) => !card.neutral && !card.signalOnly);
     const scores = countTags(cards, likedIds);
+    const categoryScores = countCategories(cards, likedIds);
     const ranked = rankTags(scores);
     const fallback = ARCHETYPES[12];
-    const archetype = ranked.length ? getArchetype(scores) : fallback;
-    const rankedArchetypes = ranked.length ? rankArchetypes(scores) : [{ ...fallback, match: 1 }];
+    const archetype = ranked.length ? getArchetype(scores, categoryScores) : fallback;
+    const rankedArchetypes = ranked.length ? rankArchetypes(scores, categoryScores) : [{ ...fallback, categoryMatch: 0, match: 1 }];
     const maxArchetypeMatch = Math.max(1, ...rankedArchetypes.map((item) => item.match));
     const max = Math.max(1, ...ranked.map((item) => item.count));
     return {
       scores,
+      categoryScores,
       topTags: ranked.slice(0, 5).map((item) => ({ ...item, percent: Math.round((item.count / max) * 100) })),
       archetype,
       topArchetypes: rankedArchetypes.slice(0, 4).map((item) => ({
@@ -129,7 +143,7 @@
         match: item.match,
         percent: Math.round((item.match / maxArchetypeMatch) * 100)
       })),
-      likedCount: likedIds.length
+      likedCount: cards.filter((card) => likedIds.includes(card.id)).length
     };
   }
 
@@ -147,22 +161,11 @@
   }
 
   function selectPersonalizedLooks(recommendations, cards, likedIds, audience = "all", limit = 20) {
-    const profile = calculateProfile(cards, likedIds);
-    const topTagOrder = new Map(profile.topTags.map((item, index) => [item.tag, index]));
+    const preference = buildPreference(cards, likedIds);
     return recommendations
       .filter((look) => audience === "all" || look.audience === audience || look.audience === "all")
       .map((look) => {
-        const directScore = look.tags.reduce((score, tag) => score + (profile.scores[tag] || 0) * 4, 0);
-        const archetypeScore = look.tags.reduce((score, tag) => score + (profile.archetype.tags.includes(tag) ? 2 : 0), 0);
-        const topTagBonus = look.tags.reduce((score, tag) => {
-          const position = topTagOrder.get(tag);
-          return score + (position === undefined ? 0 : Math.max(1, 5 - position));
-        }, 0);
-        return {
-          ...look,
-          affinity: directScore + archetypeScore + topTagBonus,
-          matches: look.tags.filter((tag) => profile.scores[tag] || profile.archetype.tags.includes(tag)).slice(0, 3)
-        };
+        return { ...look, ...scoreCandidate(look, preference) };
       })
       .sort((a, b) => b.affinity - a.affinity || a.id.localeCompare(b.id))
       .slice(0, limit);
@@ -174,38 +177,180 @@
   }
 
   function selectProductRecommendations(products, cards, likedIds, audience = "all", budget = "standard", limit = 6) {
-    const profile = calculateProfile(cards, likedIds);
-    return products
+    const preference = buildPreference(cards, likedIds);
+    const ranked = products
       .filter((product) => audience === "all" || product.audiences.includes(audience) || product.audiences.includes("all"))
       .map((product) => {
-        const matches = product.tags.filter((tag) => profile.scores[tag] || profile.archetype.tags.includes(tag));
-        const tagAffinity = product.tags.reduce((score, tag) => {
-          return score + (profile.scores[tag] || 0) * 3 + (profile.archetype.tags.includes(tag) ? 1 : 0);
-        }, 0);
-        const affinity = tagAffinity + (product.priceBand === budget ? 2 : 0);
-        return { ...product, affinity, matches: matches.slice(0, 3) };
+        const scored = scoreCandidate(product, preference);
+        const budgetMismatch = product.priceBand && product.priceBand !== budget;
+        return { ...product, ...scored, budgetMismatch,
+          affinity: scored.affinity + (product.priceBand === budget ? 1 : 0) };
       })
+      .sort((a, b) => b.affinity - a.affinity || a.id.localeCompare(b.id))
+      ;
+    return diversify(ranked, limit, "brand");
+  }
+
+  function analyzeDiagnosis(cards, likedIds, roundIds = []) {
+    const preference = buildPreference(cards, likedIds);
+    const liked = new Set(likedIds);
+    const round = cards.filter((card) => roundIds.includes(card.id) && !card.neutral);
+    const latest = buildPreference(round, likedIds);
+    const signals = preference.signals.map((feature) => ({ feature,
+      evidence: preference.likedCards.filter((card) => (card.features || []).includes(feature))
+        .map((card) => ({ id: card.id, label: card.label || card.name || feature })).slice(0, 3) }));
+    return { signals, latestSignals: latest.signals.slice(0, 3),
+      roundLiked: round.filter((card) => liked.has(card.id) && !card.signalOnly).length,
+      roundAnswered: round.filter((card) => !card.signalOnly).length,
+      cautious: preference.likedCards.filter((card) => !card.signalOnly).length < 3 };
+  }
+
+  function selectDiscoveryRecommendations(products, cards, likedIds, audience = "all", budget = "standard", feedback = {}, limit = 6) {
+    const preference = buildPreference(cards, likedIds);
+    if (!preference.likedCards.length) return [];
+    const ranked = selectProductRecommendations(products.filter((product) => feedback[product.id] !== "no"),
+      cards, likedIds, audience, budget, products.length)
+      .filter((product) => product.affinity > 0 && product.evidenceIds.length && product.matches.length)
+      .map((product) => {
+        const anchor = (product.features || []).filter((feature) => preference.features[feature] > 0).slice(0, 2);
+        const explore = (product.features || []).filter((feature) => preference.features[feature] === undefined).slice(0, 1);
+        return { ...product, anchor, explore,
+          discoveryReason: `${anchor.length ? `好きだった「${anchor.join("・")}」を手がかりに` : `選んだ「${product.matches.slice(0, 2).join("・")}」の雰囲気を手がかりに`}、${product.name}。`,
+          experiment: explore.length ? `次は「${explore[0]}」も気になるか、見比べてみましょう。` : "色・丈・素材を一つ変えた服も、見比べてみましょう。" };
+      })
+      .sort((a, b) => Number(b.specialist === true) - Number(a.specialist === true) ||
+        Number(feedback[a.id] === "like") - Number(feedback[b.id] === "like") || b.affinity - a.affinity || a.id.localeCompare(b.id));
+    return diversify(ranked.filter((item) => item.specialist), limit, "brand")
+      .concat(diversify(ranked.filter((item) => !item.specialist), limit, "brand")).slice(0, limit);
+  }
+
+  function selectShopRecommendations(shops, cards, likedIds, limit = 4, area = "", audience = "all") {
+    const preference = buildPreference(cards, likedIds);
+    return shops
+      .filter((shop) => !shop.areas || shop.areas.some((region) => area.includes(region)))
+      .filter((shop) => audience === "all" || !shop.audiences || shop.audiences.includes(audience) || shop.audiences.includes("all"))
+      .map((shop) => ({ ...shop, ...scoreCandidate(shop, preference) }))
       .sort((a, b) => b.affinity - a.affinity || a.id.localeCompare(b.id))
       .slice(0, limit);
   }
 
-  function selectShopRecommendations(shops, cards, likedIds, limit = 4) {
-    const profile = calculateProfile(cards, likedIds);
-    return shops
-      .map((shop) => ({
-        ...shop,
-        matches: shop.tags.filter((tag) => profile.scores[tag] || profile.archetype.tags.includes(tag)).slice(0, 3),
-        affinity: shop.tags.reduce((score, tag) => {
-          return score + (profile.scores[tag] || 0) * 3 + (profile.archetype.tags.includes(tag) ? 2 : 0);
-        }, 0)
-      }))
-      .sort((a, b) => b.affinity - a.affinity || a.id.localeCompare(b.id))
-      .slice(0, limit);
+  function buildPreference(cards, likedIds) {
+    const liked = new Set(likedIds);
+    const weights = {};
+    const features = {};
+    const photoColors = {};
+    for (const card of cards.filter((item) => !item.neutral && !item.signalOnly)) {
+      for (const color of card.imageAnalysis?.palette || []) {
+        const entry = photoColors[color.name] ||= { yes: 0, no: 0 };
+        entry[liked.has(card.id) ? "yes" : "no"] += color.share;
+      }
+    }
+    const colorWeights = Object.fromEntries(Object.entries(photoColors).map(([name, count]) =>
+      [name, (count.yes - count.no * 0.35) / (count.yes + count.no + 1)]));
+    for (const field of ["tags", "features"]) {
+      const counts = {};
+      for (const card of cards.filter((item) => !item.neutral)) for (const value of card[field] || []) {
+        const entry = counts[value] ||= { yes: 0, no: 0 };
+        entry[liked.has(card.id) ? "yes" : "no"]++;
+      }
+      const destination = field === "features" ? features : weights;
+      for (const [value, count] of Object.entries(counts)) {
+        // 多数のカードに付くタグが有利にならないよう、選択率と証拠数で補正。
+        destination[value] = (count.yes - count.no * 0.35) / (count.yes + count.no + 1);
+      }
+    }
+    return { weights, features, colorWeights,
+      photoColorSummary: Object.entries(colorWeights).filter(([, weight]) => weight > 0)
+        .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name),
+      likedCards: cards.filter((card) => liked.has(card.id) && !card.neutral),
+      signals: Object.entries(features).filter(([, weight]) => weight > 0)
+        .sort((a, b) => b[1] - a[1]).slice(0, 5).map(([name]) => name) };
+  }
+
+  function scoreCandidate(candidate, preference) {
+    const matches = [...(candidate.features || []), ...(candidate.tags || [])]
+      .filter((value) => (preference.features[value] ?? preference.weights[value] ?? 0) > 0)
+      .sort((a, b) => (preference.features[b] ?? preference.weights[b]) - (preference.features[a] ?? preference.weights[a]));
+    const affinity = (candidate.tags || []).reduce((sum, tag) => sum + (preference.weights[tag] || 0) * 3, 0)
+      + (candidate.features || []).reduce((sum, feature) => sum + (preference.features[feature] || 0) * 6, 0)
+      // Image colors include background/skin, so use only a small tie-breaker.
+      + (candidate.imageAnalysis?.palette || []).reduce((sum, color) =>
+        sum + color.share * (preference.colorWeights?.[color.name] || 0), 0);
+    const evidence = preference.likedCards.filter((card) =>
+      (card.features || []).some((feature) => (candidate.features || []).includes(feature)) ||
+      card.tags.some((tag) => (candidate.tags || []).includes(tag))).slice(0, 2);
+    return { affinity, matches: [...new Set(matches)].slice(0, 3), evidenceIds: evidence.map((card) => card.id),
+      reason: matches.length ? `選んだ服の「${[...new Set(matches)].slice(0, 3).join("・")}」と共通する候補。`
+        : "選択との共通点はまだ少なめ。比較用の候補です。" };
+  }
+
+  function diversify(ranked, limit, field) {
+    const selected = [];
+    const remaining = [...ranked];
+    while (remaining.length && selected.length < limit) {
+      remaining.sort((a, b) => {
+        const score = (candidate) => candidate.affinity - selected.filter((item) => item[field] === candidate[field]).length * 4;
+        return score(b) - score(a) || a.id.localeCompare(b.id);
+      });
+      selected.push(remaining.shift());
+    }
+    return selected;
+  }
+
+  function selectAdaptiveRound(candidates, cards, likedIds, audience, answeredIds = [], limit = 6) {
+    const answered = new Set(answeredIds);
+    const preference = buildPreference(cards, likedIds);
+    const remaining = candidates.filter((candidate) =>
+      (audience === "all" || candidate.audience === audience || candidate.audience === "all") &&
+      !answered.has(candidate.id)).map((candidate) => {
+        const scored = scoreCandidate(candidate, preference);
+        const uncertain = (candidate.features || []).filter((feature) => Math.abs(preference.features[feature] || 0) < 0.3);
+        return { ...candidate, ...scored, uncertain,
+          roundReason: uncertain.length ? `「${uncertain.slice(0, 2).join("・")}」も好きか確かめたい候補です。` : scored.reason };
+      });
+    const selected = [];
+    while (remaining.length && selected.length < limit) {
+      // 最初は好みに近い候補、3枚目ごとには未確認の特徴を含む候補も比較する。
+      const explore = selected.length % 3 === 2;
+      remaining.sort((a, b) => {
+        const score = (item) => item.affinity + (explore ? item.uncertain.length * 4 : 0)
+          - selected.filter((choice) => choice.category === item.category).length * 5;
+        return score(b) - score(a) || a.id.localeCompare(b.id);
+      });
+      selected.push(remaining.shift());
+    }
+    return selected;
+  }
+
+  // 診断済みの服を「新しいおすすめ」として再表示しない。
+  // 分類の代表例ではなく、好きと答えた実際の服との共通点がある候補だけを提案する。
+  function selectNovelLooks(candidates, cards, likedIds, audience = "all", seenIds = [], limit = 6) {
+    const preference = buildPreference(cards, likedIds);
+    if (!preference.likedCards.length) return [];
+    const seen = new Set(seenIds);
+    const seenImages = new Set(cards.map((card) => card.image).filter(Boolean));
+    const usedImages = new Set();
+    return selectPersonalizedLooks(candidates, cards, likedIds, audience, candidates.length)
+      .filter((look) => {
+        if (seen.has(look.id) || seenImages.has(look.image) || usedImages.has(look.image) ||
+            look.affinity <= 0 || !look.matches.length || !look.evidenceIds.length) return false;
+        usedImages.add(look.image);
+        return true;
+      })
+      .slice(0, limit)
+      .map((look) => ({ ...look, roundReason: look.reason }));
   }
 
   return {
     ARCHETYPES,
+    analyzeDiagnosis,
+    selectDiscoveryRecommendations,
+    buildPreference,
+    scoreCandidate,
+    selectAdaptiveRound,
+    selectNovelLooks,
     countTags,
+    countCategories,
     rankTags,
     getArchetype,
     rankArchetypes,

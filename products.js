@@ -1,89 +1,33 @@
 (function () {
+  // 公式一覧を案内し、未確認のSKU・在庫・価格を断定しない。
+  const make = (id, brand, name, category, audiences, priceBand, tags, features, url) => ({
+    id, brand, name, category, audiences, priceBand, tags, features, url,
+    kind: "collection", sourceUrl: url, checkedAt: "2026-10-06"
+  });
   window.KONOMI_PRODUCTS = [
-    {
-      id: "p01", brand: "UNIQLO", name: "エアリズムコットンオーバーサイズTシャツ／5分袖", category: "トップス",
-      audiences: ["all"], priceBand: "value", tags: ["ミニマル", "カジュアル", "ストリート", "リラックス", "シティーボーイ"],
-      url: "https://www.uniqlo.com/jp/ja/products/E465185-000/00"
-    },
-    {
-      id: "p02", brand: "UNIQLO", name: "タックワイドパンツ", category: "ボトムス",
-      audiences: ["women"], priceBand: "value", tags: ["きれいめ", "韓国系", "ミニマル", "ワイド", "上品"],
-      url: "https://www.uniqlo.com/jp/ja/products/E460311-000/00"
-    },
-    {
-      id: "p03", brand: "UNIQLO", name: "テーラードジャケット リラックスフィット", category: "アウター",
-      audiences: ["women"], priceBand: "standard", tags: ["クラシック", "モード", "きれいめ", "韓国系", "直線的"],
-      url: "https://www.uniqlo.com/jp/ja/women/outerwear/jackets?categoryId=2275&categoryIds=2275&sort=1"
-    },
-    {
-      id: "p04", brand: "無印良品", name: "婦人 ライトオンスデニム タックワイドパンツ", category: "ボトムス",
-      audiences: ["women"], priceBand: "value", tags: ["ナチュラル", "カジュアル", "デニム", "シティーボーイ", "リラックス"],
-      url: "https://www.muji.com/jp/ja/store/search/cmdty/%E3%83%AF%E3%82%A4%E3%83%89%E3%83%87%E3%83%8B%E3%83%A0%E3%83%91%E3%83%B3%E3%83%84"
-    },
-    {
-      id: "p05", brand: "UNIQLO", name: "リネンブレンドジャケット", category: "アウター",
-      audiences: ["men"], priceBand: "standard", tags: ["ナチュラル", "クラシック", "きれいめ", "リラックス", "シティーボーイ"],
-      url: "https://www.uniqlo.com/jp/ja/products/E425136-000/00"
-    },
-    {
-      id: "p06", brand: "UNIQLO", name: "感動ジャケット", category: "アウター",
-      audiences: ["men"], priceBand: "standard", tags: ["クラシック", "きれいめ", "シティーボーイ", "ミニマル", "直線的"],
-      url: "https://www.uniqlo.com/jp/ja/men/outerwear/jackets"
-    },
-    {
-      id: "p07", brand: "無印良品", name: "紳士 カポック混 デニム5Pワイドパンツ", category: "ボトムス",
-      audiences: ["men"], priceBand: "value", tags: ["アメカジ", "カジュアル", "デニム", "ワイド", "アースカラー"],
-      url: "https://www.muji.com/jp/ja/store/search/cmdty/%E3%83%AF%E3%82%A4%E3%83%89%E3%83%87%E3%83%8B%E3%83%A0%E3%83%91%E3%83%B3%E3%83%84"
-    },
-    {
-      id: "p08", brand: "UNIQLO", name: "ワイドパラシュートパンツ／デニム", category: "ボトムス",
-      audiences: ["all"], priceBand: "value", tags: ["ストリート", "Y2K", "ワイド", "スポーティ", "個性的"],
-      url: "https://www.uniqlo.com/jp/ja/products/E472852-000/00"
-    },
-    {
-      id: "p09", brand: "CONVERSE", name: "ALL STAR US OX", category: "シューズ",
-      audiences: ["all"], priceBand: "standard", tags: ["アメカジ", "シティーボーイ", "カジュアル", "ストリート", "古着"],
-      url: "https://converse.co.jp/products/31308201"
-    },
-    {
-      id: "p10", brand: "UNIQLO", name: "バレルジーンズ", category: "ボトムス",
-      audiences: ["all"], priceBand: "value", tags: ["ストリート", "Y2K", "デニム", "個性的", "カジュアル"],
-      url: "https://www.uniqlo.com/jp/ja/men/bottoms/wide-pants?categoryIds=32455"
-    },
-    {
-      id: "p11", brand: "UNIQLO", name: "エアリズムコットンTシャツ", category: "トップス",
-      audiences: ["all"], priceBand: "value", tags: ["ミニマル", "カジュアル", "スポーティ", "軽快", "都会的"],
-      url: "https://www.uniqlo.com/jp/ja/products/E478984-000/00"
-    },
-    {
-      id: "p12", brand: "CONVERSE", name: "CANVAS ALL STAR J OX", category: "シューズ",
-      audiences: ["all"], priceBand: "premium", tags: ["ヴィンテージ", "古着", "アメカジ", "軽快", "クラシック"],
-      url: "https://converse.co.jp/collections/all-star/ox-cut"
-    },
-    {
-      id: "p13", brand: "THE NORTH FACE", name: "コンパクトジャケット", category: "アウター",
-      audiences: ["men"], priceBand: "premium", tags: ["アウトドア", "ゴープコア", "機能的", "スポーティ", "カジュアル"],
-      url: "https://www.goldwin.co.jp/ap/item/i/m/NP72530"
-    },
-    {
-      id: "p14", brand: "THE NORTH FACE", name: "ショートコンパクトジャケット", category: "アウター",
-      audiences: ["women"], priceBand: "premium", tags: ["アウトドア", "ゴープコア", "機能的", "スポーティ", "コンパクト"],
-      url: "https://www.goldwin.co.jp/ap/item/i/m/NPW22630"
-    },
-    {
-      id: "p15", brand: "WEGO", name: "ダメージストレートデニムパンツ", category: "ボトムス",
-      audiences: ["women"], priceBand: "value", tags: ["Y2K", "ストリート", "デニム", "古着", "カジュアル"],
-      url: "https://wego.jp/products/we26ss03-l0002"
-    },
-    {
-      id: "p16", brand: "WEGO", name: "レースデザインジャケット", category: "アウター",
-      audiences: ["women"], priceBand: "value", tags: ["韓国系", "Y2K", "フェミニン", "コンパクト", "きれいめ"],
-      url: "https://wego.jp/products/pl26sp02-l0003"
-    },
-    {
-      id: "p17", brand: "WEGO", name: "シングルテーラードジャケット", category: "アウター",
-      audiences: ["men"], priceBand: "standard", tags: ["韓国系", "きれいめ", "モード", "ミニマル", "直線的"],
-      url: "https://wego.jp/products/lu26sp02-m0001"
-    }
+    make("cos-m", "COS", "無地シャツ・テーパードパンツを探す", "シャツ・ボトムス", ["men"], "premium", ["ミニマル", "モード", "直線的"], ["シャツ", "細身・テーパード", "黒・モノトーン"], "https://www.cos.com/ja-jp/"),
+    make("cos-w", "COS", "構築的なトップス・ロング丈を探す", "トップス・ワンピース", ["women"], "premium", ["ミニマル", "モード", "直線的"], ["ロング丈", "スカート・ワンピース", "黒・モノトーン"], "https://www.cos.com/ja-jp/"),
+    make("ua", "UNITED ARROWS", "ジャケット・セットアップを探す", "ジャケット", ["all"], "premium", ["きれいめ", "上品", "クラシック"], ["ジャケット", "統一感のある配色", "青・ネイビー"], "https://store.united-arrows.co.jp/"),
+    make("beams", "BEAMS", "柄シャツ・ゆったりした街着を探す", "シャツ・ボトムス", ["all"], "standard", ["シティーボーイ", "プレッピー", "カジュアル"], ["柄・チェック", "シャツ", "ゆったりした形"], "https://www.beams.co.jp/"),
+    make("ur", "URBAN RESEARCH", "淡色のシャツ・軽いジャケットを探す", "シャツ・ジャケット", ["all"], "standard", ["ナチュラル", "きれいめ", "リラックス"], ["淡色", "シャツ", "ジャケット"], "https://www.urban-research.jp/"),
+    make("freaks", "FREAK'S STORE", "ビッグT・ワークパンツを探す", "トップス・ボトムス", ["all"], "standard", ["ストリート", "アメカジ", "オーバーサイズ", "ワーク"], ["カットソー", "ゆったりした形", "パンツ"], "https://www.daytona-park.com/"),
+    make("carhartt", "Carhartt WIP", "ワークジャケット・ゆったりしたパンツを探す", "アウター・ボトムス", ["all"], "premium", ["ワーク", "ストリート", "アメカジ"], ["ジャケット", "ゆったりした形", "ベージュ・茶"], "https://carhartt-wip.jp/collections/all"),
+    make("levis", "Levi's", "ストレート・バギーデニムを探す", "デニム", ["all"], "standard", ["デニム", "アメカジ", "ヴィンテージ", "Y2K"], ["デニム素材", "ゆったりした形", "パンツ"], "https://levi.jp/"),
+    make("adidas", "adidas", "トラックウェア・スニーカーを探す", "スポーツウェア", ["all"], "standard", ["スポーティ", "ストリート", "軽快"], ["スニーカー", "機能アウター", "パンツ"], "https://www.adidas.jp/"),
+    make("patagonia", "patagonia", "シェル・アウトドアウェアを探す", "機能アウター", ["all"], "premium", ["アウトドア", "ゴープコア", "機能的", "アースカラー"], ["機能アウター", "アクセントカラー"], "https://www.patagonia.jp/"),
+    make("1ldk", "1LDK / UNIVERSAL PRODUCTS.・MY___", "シャツ・余裕のあるシルエットを探す", "シャツ・ボトムス", ["all"], "premium", ["シティーボーイ", "ミニマル", "ベーシック"], ["シャツ", "ゆったりした形", "白・生成り"], "https://onlinestore.1ldkshop.com/"),
+    make("nubian", "NUBIANの取り扱いブランド", "デザイナーズの黒い服・重ね着を探す", "セレクト", ["all"], "premium", ["モード", "ストリート", "個性的"], ["黒・モノトーン", "重ね着", "厚底・ブーツ"], "https://nubiantokyo.com/collections/all"),
+    make("snidel", "SNIDEL", "短丈トップス・ロングスカートを探す", "トップス・スカート", ["women"], "standard", ["きれいめ", "コンパクト", "上品"], ["短丈・コンパクト", "ロング丈", "スカート・ワンピース"], "https://snidel.com/"),
+    make("andst", "niko and ...", "自然な配色・リラックスした服を探す", "日常着", ["all"], "value", ["ナチュラル", "カジュアル", "リラックス"], ["ベージュ・茶", "ゆったりした形", "シャツ"], "https://www.nikoand.jp/brands/niko-and/"),
+    make("hare", "HARE", "モノトーン・形に特徴のある服を探す", "モードウェア", ["all"], "standard", ["モード", "モノトーン", "直線的", "個性的"], ["黒・モノトーン", "ジャケット", "ゆったりした形"], "https://www.dot-st.com/hare/feature/?dispNo=012001001"),
+    make("emoda", "EMODA", "短丈トップス・厚底ブーツを探す", "トップス・シューズ", ["women"], "standard", ["Y2K", "モード", "コンパクト"], ["短丈・コンパクト", "厚底・ブーツ", "黒・モノトーン"], "https://emoda-japan.com/"),
+    make("musinsa", "MUSINSAの韓国ブランド", "韓国ブランドのシャツ・ワイドパンツを探す", "ブランド横断", ["all"], "standard", ["韓国系", "オーバーサイズ", "きれいめ"], ["シャツ", "ゆったりした形", "淡色"], "https://global.musinsa.com/jp"),
+    make("baycrews", "BAYCREW'Sの取り扱いブランド", "ジャケット・デニム・重ね着を探す", "セレクト", ["all"], "premium", ["きれいめ", "カジュアル", "シティーボーイ"], ["ジャケット", "デニム素材", "重ね着"], "https://baycrews.jp/"),
+    make("strato", "Stratoの取り扱いブランド", "自然素材のシャツ・日常着を探す", "セレクト", ["all"], "premium", ["ナチュラル", "カジュアル", "ベーシック"], ["シャツ", "白・生成り", "リネン・自然素材"], "https://www.strato.co.jp/"),
+    make("ragtag", "RAGTAGのブランド古着", "デザイナーズ・一点物を探す", "ブランド古着", ["all"], "standard", ["古着", "ヴィンテージ", "モード", "個性的"], ["黒・モノトーン", "ジャケット", "重ね着"], "https://www.ragtag.jp/"),
+    make("flamingo", "FLAMINGOの古着", "柄・デニム・レトロな服を探す", "古着", ["all"], "standard", ["古着", "ヴィンテージ", "アメカジ", "暖色"], ["柄・チェック", "デニム素材", "ベージュ・茶"], "https://www.flamingo-online.jp/"),
+    make("uniqlo", "UNIQLO", "無地T・ベーシックなパンツを探す", "日常着", ["all"], "value", ["ベーシック", "ミニマル", "カジュアル"], ["カットソー", "パンツ", "白・生成り"], "https://www.uniqlo.com/jp/ja/"),
+    make("wego", "WEGO", "短丈トップス・ルーズデニムを探す", "トレンドウェア", ["all"], "value", ["Y2K", "韓国系", "ストリート", "デニム"], ["短丈・コンパクト", "デニム素材", "ゆったりした形"], "https://wego.jp/")
   ];
+  window.KONOMI_PRODUCTS.push(...(window.KONOMI_SPECIALIST_BRANDS || []));
 })();

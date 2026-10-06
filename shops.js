@@ -64,13 +64,32 @@
       officialUrl: "https://www.goldwin.co.jp/store/shoplist/"
     },
     {
-      id: "s08",
-      name: "近くの個人古着店",
-      type: "ローカル古着検索",
-      query: "古着屋",
-      tags: ["古着", "ヴィンテージ", "アメカジ", "Y2K", "個性的"],
-      description: "診断エリア周辺の個人店を横断検索します。一点物や地域ごとの品ぞろえを楽しめます。",
-      officialUrl: ""
+      id: "local-1ldk", name: "1LDK nakameguro", type: "独立系セレクトショップ",
+      query: "1LDK nakameguro 中目黒", areas: ["東京", "渋谷", "中目黒", "目黒", "恵比寿"],
+      tags: ["シティーボーイ", "ミニマル", "ベーシック"],
+      features: ["シャツ", "ゆったりした形", "白・生成り"],
+      description: "公式でUNIVERSAL PRODUCTS.・EVCON・MY___等を確認。日常着のシルエットや重ね着を比較する候補。",
+      officialUrl: "https://1ldkshop.com/", sourceLabel: "公式の取り扱い・店舗情報", checkedAt: "2026-10-06"
+    },
+    {
+      id: "local-nubian", name: "NUBIAN HARAJUKU", type: "独立系セレクトショップ",
+      query: "NUBIAN HARAJUKU 原宿", areas: ["東京", "渋谷", "原宿", "表参道", "新宿"],
+      tags: ["モード", "ストリート", "個性的"],
+      features: ["黒・モノトーン", "重ね着", "厚底・ブーツ"],
+      description: "公式のデザイナーズ・ストリートの取り扱いを確認。店頭在庫はオンラインと異なる場合があります。",
+      officialUrl: "https://nubiantokyo.com/pages/stores", sourceLabel: "公式の取り扱い・店舗情報", checkedAt: "2026-10-06"
+    },
+    {
+      id: "local-flamingo", name: "FLAMINGO 下北沢店", type: "古着専門店",
+      query: "フラミンゴ 下北沢店", areas: ["東京", "下北沢", "世田谷", "渋谷"],
+      tags: ["古着", "ヴィンテージ", "アメカジ", "カジュアル"],
+      features: ["柄・チェック", "デニム素材", "ベージュ・茶"],
+      description: "公式の店舗一覧と古着の取り扱いを確認。掲載商品がこの店舗にあるとは限りません。",
+      officialUrl: "https://www.flamingo-online.jp/f/shoplist", sourceLabel: "公式の取り扱い・店舗情報", checkedAt: "2026-10-06"
     }
   ];
+  window.KONOMI_SHOPS.forEach((shop) => {
+    shop.sourceLabel ||= "公式サイトを案内するブランド候補";
+    shop.reviewStatus = "not-fetched";
+  });
 })();

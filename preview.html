@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>KONOMI — モバイルプレビュー</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="preview.css?v=21">
+    <script src="preview.js?v=21" defer></script>
+  </head>
+  <body>
+    <header class="preview-toolbar">
+      <div class="preview-title"><b>konomi.</b><span>モバイルプレビュー</span></div>
+      <div class="preview-controls">
+        <label for="previewWidth">画面幅</label>
+        <select id="previewWidth" aria-label="モバイル画面の幅">
+          <option value="320">320px · 小さめ</option>
+          <option value="390" selected>390px · 標準</option>
+          <option value="430">430px · 大きめ</option>
+        </select>
+        <button id="refreshPreview" type="button">更新 ↻</button>
+        <a id="desktopLink" href="/?layout=desktop">PC表示 ↗</a>
+      </div>
+    </header>
+    <main class="preview-stage">
+      <div class="preview-device" id="previewDevice">
+        <iframe id="mobilePreview" title="KONOMIのモバイル画面"></iframe>
+      </div>
+      <p class="preview-note">スマホ幅でそのまま操作できます。編集後は「更新」で表示を確認。</p>
+    </main>
+  </body>
+</html>

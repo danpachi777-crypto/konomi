@@ -4,18 +4,19 @@ const fs = require("node:fs");
 const path = require("node:path");
 const recommendations = require("../recommendations.js");
 
-test("おすすめ専用コーデを40件用意している", () => {
-  assert.equal(recommendations.length, 40);
-  assert.equal(new Set(recommendations.map((look) => look.id)).size, 40);
-  assert.equal(recommendations.filter((look) => look.audience === "women").length, 20);
-  assert.equal(recommendations.filter((look) => look.audience === "men").length, 20);
+test("結果候補も男女別に十分な件数を用意している", () => {
+  assert.ok(recommendations.length >= 52);
+  assert.equal(new Set(recommendations.map((look) => look.id)).size, recommendations.length);
+  assert.equal(recommendations.filter((look) => look.audience === "men").length, recommendations.length / 2);
+  assert.equal(recommendations.filter((look) => look.audience === "women").length, recommendations.length / 2);
 });
 
-test("すべてのおすすめに説明・分析タグ・別画像がある", () => {
+test("すべての結果候補に説明・カテゴリー・全身コーデ画像がある", () => {
   for (const look of recommendations) {
     assert.ok(look.summary.length >= 20, `${look.id}の説明が短すぎます`);
     assert.equal(look.tags.length, 4);
-    assert.match(look.image, /^assets\/recommendations\/recommend-\d{2}\.png$/);
+    assert.ok(look.category.length > 0);
+    assert.match(look.image, /^assets\/outfits\/(men|women)-[a-z0-9-]+\.jpg$/);
     assert.equal(fs.existsSync(path.join(__dirname, "..", look.image)), true, `${look.image}がありません`);
   }
 });

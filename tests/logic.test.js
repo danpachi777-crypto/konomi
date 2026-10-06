@@ -29,6 +29,17 @@ test("未選択カードのうち好みと共通タグが多いものを先に�
   assert.equal(recommendations[1].id, "d");
 });
 
+test("共通タグだけでなく服カテゴリーの選択数を優先して診断する", () => {
+  const categorizedCards = [
+    { id: "s1", category: "都会派ストリート", tags: ["ストリート", "モノトーン"] },
+    { id: "s2", category: "都会派ストリート", tags: ["ストリート", "カラフル"] },
+    { id: "m1", category: "静かなミニマル", tags: ["ミニマル", "モノトーン"] }
+  ];
+  const profile = calculateProfile(categorizedCards, ["s1", "s2", "m1"]);
+  assert.equal(profile.categoryScores["都会派ストリート"], 2);
+  assert.equal(profile.archetype.name, "都会派ストリート");
+});
+
 test("診断結果と性別に合わせて別ライブラリのコーデを並べる", () => {
   const diagnosis = [
     { id: "d1", audience: "women", tags: ["韓国系", "きれいめ"] },

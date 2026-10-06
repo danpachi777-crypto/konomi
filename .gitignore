@@ -1,3 +1,11 @@
 .qa-*/
 preview-*.png
 node_modules/
+.python/
+.venv/
+__pycache__/
+.venv-fashionclip/
+.fashionclip/
+.env
+.env.*
+!.env.example

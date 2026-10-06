@@ -4,7 +4,14 @@
   "private": true,
   "description": "左右のスワイプから服の好みを見つけるモバイルファーストPWA",
   "scripts": {
+    "prestart": "node scripts/run-python.cjs",
     "start": "node server.js",
+    "analyze:photos": "node scripts/run-python.cjs",
+    "test:python": "node scripts/run-python.cjs test",
+    "fashionclip:serve": "node --env-file=.env scripts/run-fashionclip.cjs",
+    "fashionclip:precompute": "node --env-file=.env scripts/precompute-fashionclip.cjs",
+    "fashionclip:precompute:local": "node --env-file=.env scripts/precompute-fashionclip-local.cjs",
+    "test:fashionclip:local": "node scripts/verify-fashion-preference.cjs",
     "test": "node --test"
   },
   "engines": {

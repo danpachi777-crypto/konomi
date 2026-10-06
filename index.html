@@ -3,11 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f4f0e8" />
+    <meta name="theme-color" content="#f7f8f6" />
     <meta name="description" content="好きな服を左右にスワイプして、自分の好みと着こなしを見つけるアプリ" />
+    <script src="local-preview.js?v=21"></script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=8" />
+    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="ui-refresh.css?v=21" />
+    <link rel="stylesheet" href="fashion-analysis.css?v=23" />
     <title>KONOMI — 好きから、似合うへ。</title>
   </head>
   <body>
@@ -15,7 +18,7 @@
       <header class="topbar" id="topbar">
         <button class="brand" type="button" data-route="home" aria-label="ホームへ移動">
           <span class="brand-mark">K</span>
-          <span>KONOMI</span>
+          <span>konomi.</span>
         </button>
         <button class="text-button" type="button" id="aboutButton">このサービスについて</button>
       </header>
@@ -24,16 +27,16 @@
 
       <nav class="bottom-nav" id="bottomNav" aria-label="メインメニュー" hidden>
         <button type="button" data-route="swipe" aria-label="診断">
-          <span aria-hidden="true">◒</span><small>診断</small>
+          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="4"/><path d="m9 12 2 2 4-4"/></svg></span><small>診断</small>
         </button>
         <button type="button" data-route="discover" aria-label="おすすめコーデ">
-          <span aria-hidden="true">✦</span><small>おすすめ</small>
+          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6L12 3Z"/></svg></span><small>おすすめ</small>
         </button>
         <button type="button" data-route="saved" aria-label="好き">
-          <span aria-hidden="true">♡</span><small>好き</small>
+          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 4.5a5.2 5.2 0 0 0-7.4 0L12 5.6l-1.1-1.1a5.2 5.2 0 0 0-7.4 7.4L12 20.4l8.5-8.5a5.2 5.2 0 0 0 0-7.4Z"/></svg></span><small>好き</small>
         </button>
         <button type="button" data-route="result" aria-label="結果">
-          <span aria-hidden="true">◎</span><small>結果</small>
+          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V12M12 20V4M19 20V8"/><path d="M3 20h18"/></svg></span><small>結果</small>
         </button>
       </nav>
     </div>
@@ -43,20 +46,38 @@
       <button class="dialog-close" type="button" aria-label="閉じる">×</button>
       <p class="eyebrow">ABOUT KONOMI</p>
       <h2>このサービスについて</h2>
-      <p>診断用の54枚と、診断後に提案する別の40枚は、診断軸に合わせて新規生成したオリジナル素材です。初期設定で選んだ性別と診断結果に合わせて表示するルックを切り替えます。</p>
-      <p>診断後の商品提案は実在するアイテムです。購入前に公式ストアで最新の価格・在庫・サイズをご確認ください。</p>
+      <p>現在の写真は合計78枚です。初回は13カテゴリーを見比べ、まだ見ていない候補を最大6枚ずつ追加診断します。選択した服の方向をすべての診断と結果に反映し、色・形など一部だけの好みも回答できます。</p>
+      <p>写真はWebサイトやアプリでの利用が認められたPexels素材です。投稿者には必要なモデル／プロパティリリース等の取得が求められていますが、Pexelsも個別の権利を一律には保証していません。KONOMIでは未成年、服全体が読めない写真、目立つブランドを避け、人物・撮影者による推奨や提携を示さない文脈でのみ使用します。</p>
+      <p>おすすめは、選んだ服ごとの配色・形・素材と、選ばなかった服やおすすめへの回答から算出します。ブランドの公式情報を案内し、写真と同じ商品や店頭在庫であるとは断定しません。口コミはGoogle Mapsから取得できた文章のみを出典付きで表示します。</p>
       <div class="dialog-links">
-        <a href="PHOTO_SOURCES.md" target="_blank">写真の管理記録</a>
+        <a href="credits.html" target="_blank" rel="noopener">写真クレジット一覧</a>
+        <a href="PHOTO_SOURCES.md" target="_blank" rel="noopener">写真の管理方針</a>
       </div>
+      <details id="cloudPanel" hidden>
+        <summary>スワイプ履歴のクラウド保存（任意）</summary>
+        <p id="cloudStatus" role="status">接続を確認しています。</p>
+        <form id="cloudLogin">
+          <p>Supabase Authに登録済みのアカウントでログインしてください。ログイン後の回答を保存します。</p>
+          <label>メールアドレス <input id="cloudEmail" type="email" autocomplete="username" required></label>
+          <label>パスワード <input id="cloudPassword" type="password" autocomplete="current-password" required></label>
+          <button class="secondary-button" id="cloudLoginButton" type="submit">ログイン</button>
+        </form>
+        <button class="text-button" id="cloudLogout" type="button" hidden>ログアウト</button>
+        <button class="text-button" id="cloudRetry" type="button">未送信履歴を再送信</button>
+      </details>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="data.js?v=8"></script>
-    <script src="products.js?v=8"></script>
-    <script src="shops.js?v=8"></script>
-    <script src="recommendations.js?v=8"></script>
-    <script src="logic.js?v=8"></script>
-    <script src="app.js?v=8"></script>
+    <script src="photo-analysis.js?v=21"></script>
+    <script src="data.js?v=21"></script>
+    <script src="specialist-brands.js?v=21"></script>
+    <script src="products.js?v=21"></script>
+    <script src="shops.js?v=21"></script>
+    <script src="recommendations.js?v=21"></script>
+    <script src="logic.js?v=21"></script>
+    <script src="cloud-sync.js?v=21"></script>
+    <script src="fashion-preference.js?v=23"></script>
+    <script src="app.js?v=23"></script>
   </body>
 </html>

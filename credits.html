@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" href="credits.css?v=17" />
+    <title>KONOMI — 写真クレジット</title>
+  </head>
+  <body>
+    <header class="credits-hero">
+      <a href="./" class="back-link">← KONOMIへ戻る</a>
+      <p class="eyebrow">PHOTO PROVENANCE</p>
+      <h1>写真クレジット</h1>
+      <p>診断と結果で使う実写コーデ78枚の原典、撮影者、ライセンスを確認できます。</p>
+    </header>
+
+    <main>
+      <section class="policy" aria-labelledby="policy-title">
+        <h2 id="policy-title">選定方針</h2>
+        <p>写真はPexelsから取得し、13カテゴリーごとにメンズ3着・ウィメンズ3着を手作業で確認しました。上下またはワンピース全体が読めない写真、服飾小物だけの写真、未成年、目立つブランドは選定対象外です。</p>
+        <p>PexelsはWebサイトやアプリでの利用を認め、投稿者に必要なモデル／プロパティリリース等の取得を求めています。一方で、写り込んだ人物・商標等の権利を素材ごとに一律保証するものではありません。人物や撮影者による推奨・提携を示さず、公開前には利用地域・利用態様に応じた専門家の確認を推奨します。</p>
+        <div class="policy-links">
+          <a href="https://www.pexels.com/ja-jp/license/" target="_blank" rel="noopener noreferrer">Pexelsライセンス</a>
+          <a href="https://www.pexels.com/ja-jp/terms-of-service/" target="_blank" rel="noopener noreferrer">Pexels利用規約</a>
+        </div>
+      </section>
+
+      <section aria-labelledby="credits-title">
+        <div class="list-heading">
+          <div>
+            <p class="eyebrow">SOURCE LIST</p>
+            <h2 id="credits-title">使用写真</h2>
+          </div>
+          <p id="photoCount" aria-live="polite">読み込み中…</p>
+        </div>
+        <div id="creditsGrid" class="credits-grid"></div>
+        <p id="creditsError" class="error" hidden>クレジット情報を読み込めませんでした。</p>
+      </section>
+    </main>
+
+    <script src="credits.js?v=1"></script>
+  </body>
+</html>

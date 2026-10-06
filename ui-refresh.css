@@ -1,0 +1,199 @@
+/* KONOMI / visual refresh */
+.local-header-actions { display: flex; align-items: center; gap: 9px; }
+.local-mobile-link { padding: 10px 13px; border-radius: 999px; background: #d0f568; color: #20231f; text-decoration: none; font-size: 12px; font-weight: 700; white-space: nowrap; }
+@media (max-width: 480px) {
+  .local-header-actions { gap: 6px; }
+  .local-mobile-link { display: none; }
+  .local-header-actions .text-button { max-width: 92px; line-height: 1.5; }
+}
+:root {
+  --paper: #f7f8f6;
+  --white: #ffffff;
+  --ink: #20231f;
+  --muted: #697067;
+  --line: #dfe4da;
+  --accent: #496521;
+  --highlight: #d0f568;
+  --radius: 24px;
+}
+body { background: var(--paper); -webkit-font-smoothing: antialiased; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { transition: background .2s, transform .2s, box-shadow .2s; }
+button:focus-visible, a:focus-visible { outline: 3px solid #729534; outline-offset: 4px; }
+.topbar { height: 88px; max-width: 1440px; margin: auto; padding-inline: clamp(24px, 5vw, 72px); border-bottom: 1px solid var(--line); }
+.brand { gap: 9px; font-size: 25px; font-weight: 800; letter-spacing: -.055em; }
+.brand-mark { background: var(--highlight); color: var(--ink); border-radius: 10px; width: 34px; height: 34px; font-size: 19px; }
+.topbar .text-button { font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 10px 16px; background: var(--white); }
+.eyebrow { color: var(--accent); font-size: 10px; letter-spacing: .16em; }
+.primary-button, .dark-button, .secondary-button { min-height: 56px; border-radius: 14px; font-size: 14px; font-weight: 700; }
+.primary-button { background: var(--highlight); color: var(--ink); box-shadow: none; }
+.primary-button:hover { background: #c3ec50; transform: translateY(-2px); }
+.primary-button > span { width: 29px; height: 29px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--highlight); font-size: 19px; }
+.secondary-button { background: var(--white); border-color: var(--line); }
+.secondary-button:hover { background: #edf1e8; }
+.dark-button { background: var(--ink); }
+.home-screen { max-width: 1440px; margin: auto; grid-template-columns: 1fr 1fr; gap: 36px 56px; min-height: auto; padding: 58px clamp(24px, 5vw, 72px) 32px; overflow: hidden; }
+.home-copy { padding: 12px 0; }
+.home-status { display: inline-flex; align-items: center; gap: 9px; margin: 0 0 26px; font-size: 10px; font-weight: 700; letter-spacing: .11em; }
+.home-status > span { width: 7px; height: 7px; border-radius: 50%; background: #759d30; box-shadow: 0 0 0 4px #eaf2db; }
+.home-copy h1 { font-size: clamp(44px, 4.5vw, 67px); font-weight: 800; line-height: 1.36; letter-spacing: -.055em; }
+.home-copy h1 em { color: var(--ink); position: relative; background: linear-gradient(transparent 72%, var(--highlight) 72%, var(--highlight) 93%, transparent 93%); }
+.home-copy .lead { font-size: 15px; line-height: 1.95; margin: 24px 0 28px; }
+.home-actions { gap: 10px; }
+.home-footnote { margin: 14px 0 0; font-size: 11px; color: var(--muted); }
+.home-tastes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 32px; }
+.home-tastes span { padding: 7px 10px; border: 1px solid var(--line); border-radius: 6px; color: var(--muted); font-size: 9px; letter-spacing: .07em; }
+.home-collage { height: 555px; min-height: 0; background: #e9ede4; border-radius: 28px; position: relative; overflow: hidden; }
+.home-collage::before { content: "STYLE\A FILES."; white-space: pre; position: absolute; left: 26px; top: 19px; font-size: 39px; line-height: .95; font-weight: 800; letter-spacing: -.05em; color: #d1d9c6; }
+.home-collage img { box-shadow: none; border-radius: 14px; object-fit: cover; object-position: center; }
+.home-collage .collage-1 { width: 57%; height: 79%; left: 7%; top: 14%; transform: rotate(-5deg); z-index: 1; border: 5px solid white; }
+.home-collage .collage-2 { width: 37%; height: 44%; left: auto; right: 4%; top: 4%; transform: rotate(5deg); border: 4px solid white; }
+.home-collage .collage-3 { width: 35%; height: 41%; right: 3%; top: 53%; transform: rotate(5deg); border: 4px solid white; }
+.collage-label { position: absolute; z-index: 3; padding: 9px 12px; border-radius: 5px; background: white; font-size: 8px; font-weight: 800; letter-spacing: .09em; }
+.label-one { left: 14%; bottom: 7%; transform: rotate(-5deg); }
+.label-two { right: 4%; top: 45%; transform: rotate(5deg); }
+.floating-like { width: 104px; height: 104px; z-index: 5; right: 21%; bottom: 33%; background: var(--highlight); color: var(--ink); font-size: 8px; font-weight: 800; letter-spacing: .07em; box-shadow: 0 8px 25px #20231f12; transform: rotate(-12deg); gap: 5px; }
+.floating-like b { font-size: 36px; line-height: 1; }
+.home-steps { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); padding-top: 26px; gap: 24px; }
+.home-steps article { display: flex; align-items: start; gap: 14px; padding: 8px 0; }
+.home-steps article > span { color: var(--muted); font-size: 11px; font-weight: 700; padding-top: 3px; }
+.home-steps h2 { margin: 0 0 8px; font-size: 15px; font-weight: 700; letter-spacing: -.03em; }
+.home-steps p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.8; max-width: 270px; }
+.home-steps article > b { margin-left: auto; font-size: 17px; font-weight: 400; }
+.profile-screen { max-width: 1440px; margin: auto; padding-top: 52px; }
+.profile-intro h1 { font-weight: 800; font-size: clamp(38px, 4.5vw, 60px); line-height: 1.38; }
+.step-number { font-size: 45px; color: #698a35; opacity: .35; }
+.profile-form { background: white; border-color: var(--line); border-radius: 24px; box-shadow: 0 16px 60px #20231f05; }
+.field-group input[type="text"], .field-group select { background: #f7f9f4; border-color: #e1e6db; border-radius: 10px; }
+.field-group input[type="text"]:focus, .field-group select:focus { outline-color: #d0f56860; border-color: #759d30; }
+.choice-grid label > span { border-radius: 12px; background: #f7f9f4; }
+.choice-grid input:checked + span { background: #f0f8de; border-color: #789f32; box-shadow: inset 0 0 0 1px #789f32; }
+.selection-note { font-size: 12px; line-height: 1.8; }
+.swipe-screen { padding-top: 26px; }
+.swipe-heading h1 { font-size: 28px; font-weight: 750; letter-spacing: -.04em; }
+.counter { background: white; border: 1px solid var(--line); padding: 7px 12px; border-radius: 12px; }
+.counter b { font-size: 19px; }
+.progress-track { height: 5px; border-radius: 9px; margin: 16px 0 22px; background: #e3e9db; }
+.progress-track span { background: #89b13d; border-radius: inherit; }
+.fashion-card { background: #ecefe7; border: 1px solid #d7dfce; box-shadow: 0 14px 40px #20231f10; }
+.fashion-card img { background: #ecefe7; }
+.card-behind { transform: translateY(10px) scale(.95); opacity: .6; }
+.card-shade { inset: 65% 0 0; background: linear-gradient(transparent, #131710d9); }
+.card-caption h2 { font-size: 24px; line-height: 1.4; font-weight: 700; }
+.card-caption { bottom: 22px; left: 22px; right: 22px; }
+.card-caption > span { display: inline-block; background: #ffffff25; backdrop-filter: blur(8px); padding: 5px 8px; border-radius: 6px; letter-spacing: .08em; }
+.choice-button, .undo-button { box-shadow: none; border: 1px solid var(--line); }
+.like-button { background: var(--highlight); color: var(--ink); border-color: var(--highlight); }
+.choice-button:hover { transform: translateY(-3px); box-shadow: 0 8px 20px #20231f0a; }
+.stamp-like { color: var(--highlight); }
+.bottom-nav { background: #fffffff0; border: 1px solid #dfe4da; border-radius: 22px; box-shadow: 0 8px 40px #20231f12; height: 70px; padding: 7px; }
+.bottom-nav button { color: #798172; border-radius: 16px; }
+.bottom-nav button.is-active { background: var(--ink); color: var(--highlight); }
+.bottom-nav button small { font-size: 10px; margin-top: 4px; }
+.result-screen, .saved-screen { max-width: 1280px; }
+.result-hero { border-radius: 28px; background: #22271e; padding: clamp(26px, 4vw, 50px); gap: 32px; }
+.result-copy .eyebrow, .result-copy .style-type-row span { color: var(--highlight); }
+.result-copy .personal-title { font-size: clamp(31px, 3.5vw, 46px); line-height: 1.5; font-weight: 750; }
+.personal-title > span { display: inline-block; max-width: 100%; }
+.personal-title .title-cross { color: var(--highlight); font-weight: 400; }
+.bottom-nav svg { display: block; width: 20px; height: 20px; }
+.result-copy > p { color: #d0d8c8; line-height: 1.85; font-size: 13px; }
+.result-copy .result-kicker { font-size: 12px; color: #a9b39f; }
+.result-copy .shop-note { color: #a9b39f; font-size: 11px; }
+.tag-row span { background: #ffffff0a; font-size: 11px; }
+.result-photo-stack img { border-color: #dce7cd; box-shadow: none; }
+.style-type-row > div { background: #ffffff08; border: 0; border-radius: 9px; }
+.profile-summary { gap: 9px; }
+.profile-summary > span { border: 1px solid var(--line); background: white; border-radius: 8px; padding: 8px 12px; }
+.discover-invite { border-radius: 20px; background: #edf4df; border-color: #d9e4c8; }
+.result-panel { border-radius: 20px; background: white; box-shadow: none; }
+.result-panel h2, .section-title h2 { font-weight: 750; letter-spacing: -.035em; }
+.meter, .meter i { border-radius: 6px; height: 6px; }
+.meter i { background: #8bad52; }
+.shop-section { background: #edf0e7; border: 1px solid var(--line); border-radius: 24px; }
+.shop-heading h2, .store-heading h2 { font-size: clamp(27px, 3vw, 38px); line-height: 1.45; font-weight: 750; }
+.product-card { border-color: var(--line); border-radius: 16px; padding: 22px; }
+.product-index { font-size: 22px; background: #eef5e1; border-radius: 9px; width: 42px; height: 42px; display: grid; place-items: center; }
+.product-card h3 { font-size: 18px; font-weight: 750; }
+.product-card > p, .store-copy em { font-size: 12px; }
+.product-card > a:hover { color: #527322; }
+.store-section { background: white; border-color: var(--line); border-radius: 24px; }
+.store-card { border-radius: 14px; background: #f8faf5; }
+.store-card.is-selected { box-shadow: none; border-color: #759d30; background: #f0f7e4; }
+.novel-look-card { border-color: var(--line); border-radius: 20px; box-shadow: none; }
+.novel-look-photo, .recommend-card img, .saved-card img { background: #ecefe7; }
+.novel-look-copy h3 { font-size: 17px; font-weight: 750; }
+.recommendation-feedback { flex-wrap: wrap; }
+.recommendation-feedback button { background: #f4f7ee; border-radius: 9px; padding: 9px 12px; font-size: 12px; }
+.recommendation-feedback button:first-child { background: var(--highlight); border-color: var(--highlight); }
+.diagnosis-analysis { background: white; border-color: var(--line); border-radius: 20px; }
+.analysis-insights article { background: #f2f6eb; border-radius: 12px; padding: 15px; }
+.analysis-insights h3 { font-size: 14px; }
+.feature-detail { border-radius: 16px; }
+.page-heading h1, .complete-copy h1 { font-weight: 750; line-height: 1.4; }
+.sheet-dialog { border-radius: 24px; }
+.sheet-dialog h2 { font-weight: 750; }
+@media (min-width: 801px) {
+  .home-steps article + article { border-left: 1px solid var(--line); padding-left: 24px; }
+}
+@media (max-width: 1100px) and (min-width: 801px) {
+  .home-screen { gap: 32px; }
+  .home-copy h1 { font-size: 44px; }
+  .home-collage { height: 490px; }
+  .store-layout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .profile-screen { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 28px; padding-inline: 28px; }
+}
+@media (max-width: 800px) {
+  .topbar { height: 72px; padding-inline: 22px; }
+  .brand { font-size: 23px; }
+  .topbar .text-button { font-size: 10px; padding: 9px 11px; }
+  .home-screen { grid-template-columns: 1fr; padding: 32px 22px 30px; gap: 28px; }
+  .home-copy { padding: 0; }
+  .home-status { margin-bottom: 17px; font-size: 9px; }
+  .home-copy h1 { font-size: clamp(37px, 10.3vw, 62px); line-height: 1.38; }
+  .home-copy .lead { font-size: 13px; margin: 19px 0 23px; }
+  .home-actions .primary-button { width: 100%; }
+  .home-actions .secondary-button { width: 100%; justify-content: center; }
+  .home-footnote { font-size: 10px; text-align: center; }
+  .home-tastes { margin-top: 22px; gap: 6px; }
+  .home-tastes span { font-size: 8px; padding: 6px 9px; }
+  .home-collage { height: 390px; min-height: 0; margin-top: 0; border-radius: 22px; }
+  .home-collage::before { font-size: 29px; top: 15px; left: 15px; }
+  .floating-like { width: 80px; height: 80px; font-size: 7px; }
+  .floating-like b { font-size: 28px; }
+  .collage-label { font-size: 6px; padding: 7px 8px; }
+  .home-steps { grid-template-columns: 1fr; gap: 0; padding-top: 8px; }
+  .home-steps article { padding: 20px 0; }
+  .home-steps article + article { border-top: 1px solid var(--line); }
+  .home-steps h2 { font-size: 14px; }
+  .home-steps p { max-width: none; }
+  .profile-screen { padding-top: 30px; }
+  .profile-intro h1 { font-size: 37px; }
+  .swipe-screen { padding-top: 18px; padding-bottom: 105px; }
+  .swipe-heading h1 { font-size: 25px; }
+  .swipe-heading .eyebrow { font-size: 9px; }
+  .card-stage { min-height: 0; height: clamp(350px, 52svh, 530px); }
+  .recommendation-stage { height: clamp(350px, 52svh, 550px); }
+  .card-caption h2, .recommendation-caption h2 { font-size: 21px; }
+  .swipe-actions { gap: 12px; margin-top: 6px; }
+  .result-hero { gap: 16px; padding: 28px 23px; border-radius: 22px; }
+  .result-copy .personal-title { font-size: 29px; }
+  .style-type-row { gap: 7px; }
+  .result-copy .tag-row { margin-top: 18px; }
+  .style-type-row { margin-top: 20px; }
+  .shop-section, .store-section { padding: 25px 19px; border-radius: 20px; }
+  .shop-heading h2, .store-heading h2 { font-size: 29px; }
+  .product-card > p, .recipe-detail, .recommendation-evidence { font-size: 12px; line-height: 1.8; }
+  .novel-look-photo { height: 370px; }
+  .bottom-nav { bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+@media (max-width: 360px) {
+  .topbar { padding-inline: 16px; }
+  .home-screen { padding-inline: 18px; }
+  .home-copy h1 { font-size: 34px; }
+  .home-copy .lead { font-size: 12px; }
+  .home-collage { height: 340px; }
+  .profile-intro h1 { font-size: 32px; }
+  .result-copy .personal-title { font-size: 26px; }
+  .swipe-actions { gap: 8px; }
+}
