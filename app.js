@@ -2,8 +2,10 @@ const cards = window.KONOMI_CARDS;
 const products = window.KONOMI_PRODUCTS;
 const shops = window.KONOMI_SHOPS;
 const recommendations = window.KONOMI_RECOMMENDATIONS;
+const { diagnosisQueue, newFavoriteLooks, styleOf } = window.KonomiDiagnosisPool;
 const {
   calculateProfile,
+  rankStylePreferences,
   buildPreference,
   analyzeDiagnosis,
   selectDiscoveryRecommendations,
@@ -44,6 +46,7 @@ const defaultState = {
   recommendationReasons: {},
   recommendationRound: 0,
   diagnosisIds: [],
+  diagnosisVersion: 2,
   productFeedback: {},
   brandDiscovery: "all",
   occasion: "休日",
@@ -82,6 +85,13 @@ function loadState() {
       profileCompleted: true,
       profile: demoProfile,
       likedIds: [
+        "style-men_clean_casual",
+        "style-men_amekaji",
+        "style-men_preppy",
+        "men-clean-06",
+        "men-casual-07",
+        "men-amekaji-06",
+        "men-cityboy-06",
         "men-clean-01",
         "men-casual-02",
         "men-street-01",
@@ -106,11 +116,17 @@ function loadState() {
   }
   try {
     const stored = stateStorage.load();
+    if (stored.profileCompleted && stored.diagnosisVersion !== 2) {
+      const profile = { ...defaultProfile, ...(stored.profile || {}) };
+      return { ...defaultState, profile, profileCompleted: true, route: "swipe",
+        diagnosisIds: diagnosisQueue(cards, profile.gender || "all"),
+        brandDiscovery: stored.brandDiscovery || "all", occasion: stored.occasion || profile.occasion };
+    }
     return {
       ...defaultState,
       ...stored,
       diagnosisIds: stored.diagnosisIds || (stored.profileCompleted
-        ? filterCardsByAudience(cards, stored.profile?.gender || "all").map((card) => card.id) : []),
+        ? diagnosisQueue(cards, stored.profile?.gender || "all") : []),
       profile: { ...defaultProfile, ...(stored.profile || {}) }
     };
   } catch {
@@ -144,17 +160,23 @@ function fashionSelection(candidateList, count, prefix = [], revisit = false) {
   for (let slot = 0; slot < count; slot++) {
     const result = fashionPreference.select(state, [...byId.keys()], { index: history.length + slot, reserved: [...reserved] });
     let item = result.item && byId.get(result.item.id);
+    let mode = result.item ? result.mode : 'unembedded-fallback';
+    // Show ranked new looks in the result feed without inventing similarity scores.
+    if (state.route === 'discover' && (prefix.length + slot) % 3 === 0) {
+      const fresh = candidateList.find(entry => entry.generatedPhoto && !reserved.has(canonical(entry.id)));
+      if (fresh) { item = fresh; mode = 'unembedded-fallback'; }
+    }
     // An incomplete catalog can offer unseen unembedded photos, but never fabricated scores.
     if (!item) {
       const embedded = new Set(fashionPreference.catalog.items.map(entry => entry.id));
       item = candidateList.find(entry => !reserved.has(canonical(entry.id)) && !embedded.has(canonical(entry.id)));
     }
     if (!item) break; // exhausted: shorter round / existing completed UI; no implicit recycling
-    const mode = result.item ? result.mode : 'unembedded-fallback';
     const reason = { near: '回答した写真との画像特徴が近い候補です。', middle: '少し違う方向も比較するための候補です。',
       far: 'いつもと異なる方向を試すための候補です。', diversity: '似た写真が続かないよう、画像特徴の異なる候補を選びました。',
       'unembedded-fallback': '未回答の写真です。FashionCLIPの事前分析はまだ完了していません。' }[mode];
-    selected.push({ ...item, reason, roundReason: reason, fashionSimilarity: result.item?.score ?? null, fashionMode: mode });
+    selected.push({ ...item, reason, roundReason: reason,
+      fashionSimilarity: mode === 'unembedded-fallback' ? null : result.item?.score ?? null, fashionMode: mode });
     reserved.add(canonical(item.id));
   }
   return selected;
@@ -162,13 +184,6 @@ function fashionSelection(candidateList, count, prefix = [], revisit = false) {
 
 function refreshFashionQueue(keepVisible = false) {
   if (!fashionPreference) return;
-  if (state.route === 'swipe') {
-    const prefix = state.diagnosisIds.slice(0, state.current + (keepVisible ? 1 : 0));
-    const audience = filterCardsByAudience(cards, state.profile.gender || 'all');
-    const target = window.KonomiFashionPreference.CONFIG.coldStart;
-    const next = fashionSelection(audience, Math.max(0, target - prefix.length), prefix);
-    state.diagnosisIds = [...prefix, ...next.map(item => item.id)];
-  }
   if (state.route === 'discover' && !state.recommendationRevisit) {
     const prefix = state.recommendationQueue.slice(0, state.recommendationCurrent + (keepVisible ? 1 : 0));
     const ranked = fashionRankedLooks();
@@ -220,14 +235,32 @@ function escapeHTML(value) {
 function diagnosisCards() {
   const audience = filterCardsByAudience(cards, state.profile.gender || "all");
   const byId = new Map(audience.map(card => [card.id, card]));
-  return state.diagnosisIds?.length ? state.diagnosisIds.map(id => byId.get(id)).filter(Boolean) : audience.filter(card => card.phase === 'initial');
+  if (!state.diagnosisIds?.length) {
+    state.diagnosisIds = diagnosisQueue(cards, state.profile.gender || 'all');
+    try { stateStorage.save(state); } catch {}
+  }
+  return state.diagnosisIds.map(id => byId.get(id)).filter(Boolean);
+}
+
+function initialDiagnosisCards(audience) {
+  const byId = new Map(cards.map(card => [card.id, card]));
+  return diagnosisQueue(cards, audience).map(id => byId.get(id)).filter(Boolean);
 }
 
 function personalizedLooks() {
   if (fashionPreference) return fashionSelection(fashionRankedLooks(), 20);
   const inputs = recommendationInputs();
   const seen = [...diagnosisCards().map((card) => "r-" + card.id), ...state.recommendationHistory.map((entry) => entry.id)];
-  return selectNovelLooks(recommendations, inputs.cards, inputs.likedIds, state.profile.gender || "all", seen, 20);
+  const ranked = selectNovelLooks(recommendations, inputs.cards, inputs.likedIds,
+    state.profile.gender || "all", seen, recommendations.length);
+  const fresh = ranked.filter(look => look.generatedPhoto);
+  const established = ranked.filter(look => !look.generatedPhoto);
+  const mixed = [];
+  for (let index = 0; mixed.length < 20 && (fresh.length || established.length); index++) {
+    const next = index % 3 === 0 ? fresh.shift() || established.shift() : established.shift() || fresh.shift();
+    if (next) mixed.push(next);
+  }
+  return mixed;
 }
 
 function recommendationInputs() {
@@ -272,9 +305,18 @@ function resetDiagnosis() {
   state.recommendationHistory = [];
   state.recommendationCompleted = false;
   state.recommendationQueue = [];
+  state.recommendationReasons = {};
   state.recommendationRound = 0;
-  state.diagnosisIds = [];
+  state.diagnosisIds = state.profileCompleted
+    ? diagnosisQueue(cards, state.profile.gender || "all") : [];
   state.productFeedback = {};
+  state.savedRecommendationIds = [];
+  state.route = state.profileCompleted ? "swipe" : "profile";
+  persist();
+  render();
+}
+
+function editProfile() {
   state.route = "profile";
   persist();
   render();
@@ -299,13 +341,14 @@ function render() {
 function renderHome() {
   const hasProgress = state.current > 0 && !state.sessionCompleted;
   const hasResult = state.sessionCompleted;
-  const collageCards = state.profileCompleted ? diagnosisCards().slice(0, 3) : cards.slice(0, 3);
+  const collageCards = ["gen-men-01-01", "gen-women-01-02", "gen-women-05-01"]
+    .map(id => cards.find(card => card.id === id)).filter(Boolean);
   app.innerHTML = `
     <section class="home-screen">
       <div class="home-copy">
         <p class="home-status"><span aria-hidden="true"></span> YOUR STYLE, DISCOVERED.</p>
         <h1>「好き」が、<br>あなたの<br><em>スタイルになる。</em></h1>
-        <p class="lead">気になる服を、直感で選ぶだけ。<br>あなたらしい着こなしと、次のブランドに出会おう。</p>
+        <p class="lead">Tシャツ、シャツ、ワイドパンツ。街で着たい服から、直感で選ぶだけ。<br>あなたらしい着こなしと、次のブランドに出会おう。</p>
         <div class="home-actions">
           <button class="primary-button" type="button" id="startButton">
             ${hasProgress ? "診断を続ける" : hasResult ? "もう一度診断する" : "自分の好みを見つける"}
@@ -314,7 +357,7 @@ function renderHome() {
           ${hasResult ? '<button class="secondary-button" type="button" data-route="result">前回の結果を見る</button>' : ""}
           <button class="text-button" type="button" data-route="analysis">今の好みを振り返る</button>
         </div>
-        <p class="home-footnote">初回13カテゴリーから。あとから、もっと深く。</p>
+        <p class="home-footnote">メンズ14系統・ウィメンズ12系統から、好みを見つける。</p>
         <div class="home-tastes" aria-label="診断できるスタイル"><span>MINIMAL</span><span>STREET</span><span>CASUAL</span><span>+ MORE</span></div>
       </div>
       <div class="home-collage" aria-hidden="true">
@@ -357,7 +400,8 @@ function renderProfile() {
         <h1>あなたに合う服を<br>選ぶ準備。</h1>
         <p>年代や性別、よく服を着るシーンと買い物エリアを教えてください。回答はこの端末にだけ保存され、あとから変更できます。</p>
         <div class="profile-preview" aria-hidden="true">
-          ${cards.slice(0, 3).map((card, index) => `<img style="--i:${index}" src="${card.image}" alt="">`).join("")}
+          ${["gen-women-02-01", "gen-men-05-02", "gen-women-07-03"].map(id => cards.find(card => card.id === id))
+            .filter(Boolean).map((card, index) => `<img style="--i:${index}" src="${card.image}" alt="">`).join("")}
         </div>
       </div>
       <form class="profile-form" id="profileForm">
@@ -420,8 +464,7 @@ function renderProfile() {
     const gender = document.querySelector('input[name="gender"]:checked')?.value;
     const note = document.getElementById("selectionNote");
     if (!gender) return;
-    const count = fashionPreference ? Math.min(window.KonomiFashionPreference.CONFIG.coldStart, filterCardsByAudience(cards, gender).length)
-      : filterCardsByAudience(cards, gender).filter((card) => card.phase === "initial").length;
+    const count = initialDiagnosisCards(gender).length;
     const label = gender === "women" ? "ウィメンズ" : gender === "men" ? "メンズ" : "両方";
     note.textContent = `${label}の初回診断${count}枚。回答後に別の候補を最大6枚ずつ追加診断し、結果を更新します。写真は現在全体で${cards.length}枚です。`;
   };
@@ -449,7 +492,7 @@ function renderProfile() {
     state.recommendationCompleted = false;
     state.recommendationQueue = [];
     state.recommendationRound = 0;
-    state.diagnosisIds = filterCardsByAudience(cards, state.profile.gender).filter((card) => card.phase === "initial").map((card) => card.id);
+    state.diagnosisIds = diagnosisQueue(cards, state.profile.gender);
     state.productFeedback = {};
     state.occasion = state.profile.occasion;
     state.route = "swipe";
@@ -477,7 +520,8 @@ function renderSwipe() {
   const progress = Math.round((state.current / activeCards.length) * 100);
 
   app.innerHTML = `
-    <section class="swipe-screen">
+    <section class="swipe-screen diagnosis-screen">
+      <button class="restart-diagnosis" type="button" id="restartDiagnosis">最初から</button>
       <div class="swipe-heading">
         <div>
           <p class="eyebrow">QUICK TASTE · ${escapeHTML(state.profile.nickname)}</p>
@@ -497,7 +541,8 @@ function renderSwipe() {
           <div class="choice-stamp stamp-like" aria-hidden="true">LIKE<br>THIS</div>
           <div class="card-caption">
             <span>LOOK ${String(state.current + 1).padStart(2, "0")}</span>
-            <h2>${card.label}</h2>
+            <h2>${escapeHTML(card.category)}</h2>
+            <p>${escapeHTML(card.label)}</p>
           </div>
         </article>
       </div>
@@ -512,11 +557,16 @@ function renderSwipe() {
     </section>
   `;
 
+  app.querySelectorAll(".diagnosis-screen .swipe-heading > div, .diagnosis-screen .card-shade, .diagnosis-screen .card-caption, .diagnosis-screen .style-score, .diagnosis-screen .swipe-hint")
+    .forEach((element) => element.remove());
+  app.querySelector('[data-choice="no"]').textContent = "Dislike";
+  app.querySelector('[data-choice="like"]').textContent = "Like";
   setupSwipeGesture();
   document.querySelectorAll("[data-choice]").forEach((button) => {
     button.addEventListener("click", () => animateChoice(button.dataset.choice));
   });
   document.getElementById("undoButton").addEventListener("click", undoChoice);
+  document.getElementById("restartDiagnosis").addEventListener("click", resetDiagnosis);
 }
 
 function setupSwipeGesture() {
@@ -662,10 +712,11 @@ function renderResult() {
   const activeCards = diagnosisCards();
   const inputs = recommendationInputs();
   const tasteProfile = calculateProfile(inputs.cards, inputs.likedIds);
+  const preferredStyles = rankStylePreferences(inputs.cards, inputs.likedIds, state.profile.gender);
   const preference = buildPreference(inputs.cards, inputs.likedIds);
-  const personalSummary = preference.signals.length ? preference.signals.slice(0, 2).join(" × ") : "好みをもう少し探そう";
-  const personalDescription = preference.signals.length
-    ? `選んだ服では「${preference.signals.join("・")}」に共通点がありました。カテゴリーをまたいで、この組み合わせに近い服を提案します。`
+  const personalSummary = preferredStyles.length ? preferredStyles[0].name : "好みをもう少し探そう";
+  const personalDescription = preferredStyles.length
+    ? `好きと答えた写真から、${preferredStyles.slice(0, 2).map((style) => style.name).join("・")}が好みに近いと分かりました。この系統の服を優先して提案します。`
     : "好きと答えた服がまだ少ないため、提案は比較用の候補です。診断をやり直して気になる服を選んでみてください。";
   const analyzedLooks = personalizedLooks();
   const productPool = products.filter((product) => state.productFeedback?.[product.id] !== "no" &&
@@ -676,10 +727,13 @@ function renderResult() {
   const shopPool = localShops.shops.length ? [...shops.filter((shop) => shop.areas), ...localShops.shops] : shops;
   const shopRecommendations = selectShopRecommendations(shopPool, inputs.cards, inputs.likedIds, 6, state.profile.shoppingArea, state.profile.gender);
   const tags = historyAnalysis ? historyAnalysis.tags.map(item => ({ tag: item.label, count: item.count })) : tasteProfile.topTags;
-  const categoryCounts = historyAnalysis ? historyAnalysis.categories : Object.entries(tasteProfile.categoryScores).map(([label, count]) => ({ label, count }));
+  const categoryCounts = preferredStyles.map((style) => ({ label: style.name, count: style.likes }));
+  const styleFeed = preferredStyles.slice(0, 3).map((style) => ({ ...style,
+    card: cards.find((card) => card.id === `style-${style.id}`) }));
 
   app.innerHTML = `
     <section class="result-screen">
+      <div class="result-quick-actions"><button type="button" id="quickRestartButton">最初から診断する</button></div>
       <div class="result-hero">
         <div class="result-copy">
           <p class="eyebrow">${escapeHTML(state.profile.nickname)}'S STYLE DNA</p>
@@ -700,6 +754,7 @@ function renderResult() {
 
       ${diagnosisAnalysisHTML(inputs)}
       ${tasteAnalysisHTML()}
+      ${styleFeed.length ? `<section class="style-feed"><div class="section-title"><div><p class="eyebrow">YOUR STYLE</p><h2>あなたが好きそうな系統</h2></div></div><div class="style-feed-grid">${styleFeed.map((style) => `<article class="style-feed-card"><img src="${style.card.image}" alt="${escapeHTML(style.card.label)}" loading="lazy"><div><b>${escapeHTML(style.name)}</b><small>好き ${style.likes}件</small></div></article>`).join("")}</div></section>` : ""}
       <section class="discover-invite">
         <div>
           <p class="eyebrow">CATEGORY MATCHED LOOKS</p>
@@ -870,7 +925,8 @@ function renderResult() {
     recordSuggestedLook(button.dataset.lookId, button.dataset.lookChoice);
   }));
   document.getElementById("restartButton").addEventListener("click", resetDiagnosis);
-  document.getElementById("editProfileButton").addEventListener("click", resetDiagnosis);
+  document.getElementById("quickRestartButton").addEventListener("click", resetDiagnosis);
+  document.getElementById("editProfileButton").addEventListener("click", editProfile);
   document.querySelectorAll("[data-map-shop]").forEach((button) => {
     button.addEventListener("click", () => {
       const shop = shopRecommendations.find((item) => item.id === button.dataset.mapShop);
@@ -881,6 +937,16 @@ function renderResult() {
       document.querySelectorAll("[data-store-card]").forEach((card) => card.classList.toggle("is-selected", card.dataset.storeCard === shop.id));
     });
   });
+  app.querySelectorAll([
+    ".result-hero .result-copy > p:not(.eyebrow)", ".result-hero .tag-row",
+    ".result-hero .style-type-row", ".result-photo-stack > span",
+    ".result-screen > .diagnosis-analysis", ".discover-invite p",
+    ".novel-looks-section > .shop-note", ".novel-look-copy > h3",
+    ".novel-look-copy > p", ".novel-look-copy .style-score",
+    ".novel-look-copy .liked-evidence", ".profile-summary > span"
+  ].join(",")).forEach((element) => element.remove());
+  const moreLooksHeading = app.querySelector(".discover-invite h2");
+  if (moreLooksHeading) moreLooksHeading.textContent = "もっと写真を見る";
 }
 
 function recordSuggestedLook(id, choice) {
@@ -920,6 +986,7 @@ function renderDiscover() {
 
   app.innerHTML = `
     <section class="swipe-screen discover-screen">
+      <div class="swipe-shortcuts"><button class="restart-diagnosis" type="button" id="restartDiagnosisFromDiscover">最初から</button><button class="restart-diagnosis" type="button" data-route="result">結果を見る</button></div>
       <div class="swipe-heading">
         <div>
           <p class="eyebrow">あなたへの提案 ROUND ${state.recommendationRound} · ${escapeHTML(state.profile.nickname)}</p>
@@ -963,11 +1030,16 @@ function renderDiscover() {
     </section>
   `;
 
+  app.querySelectorAll(".discover-screen .swipe-heading > div, .discover-screen .analysis-note, .discover-screen .card-shade, .discover-screen .card-caption, .discover-screen .style-score, .discover-screen .swipe-hint, .discover-screen .refinement-details")
+    .forEach((element) => element.remove());
+  app.querySelector('[data-recommendation-choice="no"]').textContent = "Dislike";
+  app.querySelector('[data-recommendation-choice="like"]').textContent = "Like";
   setupRecommendationGesture();
   document.querySelectorAll("[data-recommendation-choice]").forEach((button) => {
     button.addEventListener("click", () => animateRecommendationChoice(button.dataset.recommendationChoice));
   });
   document.getElementById("recommendationUndo").addEventListener("click", undoRecommendationChoice);
+  document.getElementById("restartDiagnosisFromDiscover").addEventListener("click", resetDiagnosis);
   bindRouteButtons();
 }
 
@@ -1176,57 +1248,29 @@ function genderLabel(value) {
 }
 
 function renderSaved() {
-  const savedLooks = recommendations.filter((look) => state.savedRecommendationIds.includes(look.id));
-  const diagnosisLikes = cards.filter((card) => state.likedIds.includes(card.id));
+  const previouslyShown = [
+    ...diagnosisCards().map(card => card.id),
+    ...state.recommendationHistory.map(entry => entry.id.replace(/^r-/, "")),
+    ...state.recommendationQueue.map(id => id.replace(/^r-/, ""))
+  ];
+  const fresh = newFavoriteLooks(cards, state.history, state.likedIds,
+    previouslyShown, state.profile.gender || 'all', 60);
+  const names = new Map(cards.filter(card => card.id.startsWith('style-'))
+    .map(card => [card.styleId, card.category]));
   app.innerHTML = `
-    <section class="saved-screen">
-      <div class="page-heading">
-        <p class="eyebrow">MY COLLECTION</p>
-        <h1>お気に入りコーデ</h1>
-        <p>${savedLooks.length ? `分析後のおすすめから${savedLooks.length}件を保存しています。` : "おすすめコーデを右にスワイプすると、ここに残ります。"}</p>
+    <section class="saved-screen favorite-discovery-screen">
+      <div class="page-heading"><p class="eyebrow">FOR YOU</p><h1>あなたが好きな服</h1></div>
+      <div class="favorite-discovery-grid">
+        ${fresh.map(card => `
+          <article class="favorite-discovery-card">
+            <img src="${card.image}" alt="${escapeHTML(names.get(styleOf(card)) || card.category)}の服" loading="lazy">
+            <span>${escapeHTML(names.get(styleOf(card)) || card.category)}</span>
+          </article>`).join('')}
       </div>
-      ${savedLooks.length ? `
-        <div class="saved-grid saved-recommendation-grid">
-          ${savedLooks.map((look) => `
-            <article class="saved-card saved-look-card">
-              <img src="${look.image}" alt="${look.label}" loading="lazy">
-              <div><h2>${look.label}</h2><p>${look.summary}</p><small>${look.tags.slice(0, 3).map((tag) => `#${tag}`).join(" · ")}</small>${styleScoreHTML(look.id)}</div>
-              <button type="button" data-remove-recommendation-id="${look.id}" aria-label="${look.label}を削除">×</button>
-            </article>`).join("")}
-        </div>
-        <div class="collection-actions">
-          <button class="primary-button" type="button" data-route="discover">おすすめを続ける <span>→</span></button>
-          <button class="secondary-button" type="button" data-route="result">診断結果を見る</button>
-        </div>
-      ` : `
-        <div class="empty-state">
-          <span>♡</span><h2>まだお気に入りがありません</h2>
-          <p>診断結果から選んだ新しいコーデを、右にスワイプして保存してみましょう。</p>
-          <button class="primary-button" type="button" data-route="discover">おすすめを見る <span>→</span></button>
-        </div>`}
-
-      <section class="diagnosis-likes">
-        <div class="section-title">
-          <div><p class="eyebrow">DIAGNOSIS INPUT</p><h2>診断で「好き」と答えた写真</h2></div>
-          <span>${diagnosisLikes.length} LIKE</span>
-        </div>
-        ${diagnosisLikes.length ? `<div class="saved-grid compact-saved-grid">
-          ${diagnosisLikes.map((card) => `
-            <article class="saved-card">
-              <img src="${card.image}" alt="${card.label}" loading="lazy">
-              <div><h2>${card.label}</h2><p>${card.tags.slice(0, 3).join(" · ")}</p>${styleScoreHTML(card.id)}</div>
-            </article>`).join("")}
-        </div>` : '<p class="muted-copy">診断で右にスワイプした写真はありません。</p>'}
-      </section>
+      ${!fresh.length ? '<p class="muted-copy">新しい写真を準備しています。</p>' : ''}
+      <div class="collection-actions"><button class="secondary-button" type="button" data-route="result">診断結果を見る</button></div>
     </section>
   `;
-  document.querySelectorAll("[data-remove-recommendation-id]").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.savedRecommendationIds = state.savedRecommendationIds.filter((id) => id !== button.dataset.removeRecommendationId);
-      persist();
-      renderSaved();
-    });
-  });
   bindRouteButtons();
 }
 

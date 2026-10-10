@@ -27,6 +27,9 @@
     make("ragtag", "RAGTAGのブランド古着", "デザイナーズ・一点物を探す", "ブランド古着", ["all"], "standard", ["古着", "ヴィンテージ", "モード", "個性的"], ["黒・モノトーン", "ジャケット", "重ね着"], "https://www.ragtag.jp/"),
     make("flamingo", "FLAMINGOの古着", "柄・デニム・レトロな服を探す", "古着", ["all"], "standard", ["古着", "ヴィンテージ", "アメカジ", "暖色"], ["柄・チェック", "デニム素材", "ベージュ・茶"], "https://www.flamingo-online.jp/"),
     make("uniqlo", "UNIQLO", "無地T・ベーシックなパンツを探す", "日常着", ["all"], "value", ["ベーシック", "ミニマル", "カジュアル"], ["カットソー", "パンツ", "白・生成り"], "https://www.uniqlo.com/jp/ja/"),
+    make("gu-men-wide", "GU", "Tシャツに合わせるワイドパンツを探す", "日常着・ボトムス", ["men"], "value", ["カジュアル", "ベーシック", "ストリート", "ワイド"], ["カットソー", "ゆったりした形", "パンツ"], "https://www.gu-global.com/jp/ja/men/pants/widepants"),
+    make("gu-women-wide", "GU", "シャツやカーディガンに合うワイドパンツを探す", "日常着・ボトムス", ["women"], "value", ["カジュアル", "きれいめ", "リラックス", "ワイド"], ["シャツ", "ゆったりした形", "パンツ"], "https://www.gu-global.com/jp/ja/women/pants/widepants"),
+    make("globalwork-skirt", "GLOBAL WORK", "ブラウスに合わせるロングスカートを探す", "日常着・スカート", ["women"], "value", ["きれいめ", "ナチュラル", "やわらかい"], ["シャツ", "ロング丈", "スカート・ワンピース"], "https://www.dot-st.com/globalwork/disp/itemlist/?dispNo=001001002001"),
     make("wego", "WEGO", "短丈トップス・ルーズデニムを探す", "トレンドウェア", ["all"], "value", ["Y2K", "韓国系", "ストリート", "デニム"], ["短丈・コンパクト", "デニム素材", "ゆったりした形"], "https://wego.jp/")
   ];
   window.KONOMI_PRODUCTS.push(...(window.KONOMI_SPECIALIST_BRANDS || []));

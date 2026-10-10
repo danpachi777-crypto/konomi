@@ -4781,6 +4781,614 @@
         0.88
       ],
       "sha256": "088ea15706bcdf275dc0710c608e43c7f458e57eea96ad0284f4939bbe55e3b1"
+    },
+    "men-clean-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "白",
+          "share": 0.3845
+        },
+        {
+          "name": "グレー",
+          "share": 0.2987
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.1507
+        },
+        {
+          "name": "黒",
+          "share": 0.1141
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0312
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.01
+        },
+        {
+          "name": "赤",
+          "share": 0.009
+        },
+        {
+          "name": "青",
+          "share": 0.0017
+        }
+      ],
+      "brightness": 0.6503,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "ff02178498749445d5de0b450d057c1f4388e3f8c0992356bb11af85d29cb6e4"
+    },
+    "men-casual-07": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "ブラウン",
+          "share": 0.3092
+        },
+        {
+          "name": "黒",
+          "share": 0.2595
+        },
+        {
+          "name": "グレー",
+          "share": 0.1961
+        },
+        {
+          "name": "青",
+          "share": 0.0901
+        },
+        {
+          "name": "赤",
+          "share": 0.0793
+        },
+        {
+          "name": "白",
+          "share": 0.0499
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.0083
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0066
+        },
+        {
+          "name": "緑",
+          "share": 0.001
+        }
+      ],
+      "brightness": 0.4362,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "a1adbf7f89d36bdf40138beacc2493aa7f538401b179752ed8f906a868c9ddca"
+    },
+    "men-amekaji-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "緑",
+          "share": 0.3879
+        },
+        {
+          "name": "黒",
+          "share": 0.3194
+        },
+        {
+          "name": "グレー",
+          "share": 0.1372
+        },
+        {
+          "name": "青",
+          "share": 0.0855
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0338
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0171
+        },
+        {
+          "name": "赤",
+          "share": 0.0079
+        },
+        {
+          "name": "黄",
+          "share": 0.0053
+        },
+        {
+          "name": "白",
+          "share": 0.0049
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.001
+        }
+      ],
+      "brightness": 0.3458,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "d464d0e72becd49c358085b032406073ca59b945ce06739ab2502c8314a03516"
+    },
+    "men-mode-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "ブラウン",
+          "share": 0.3508
+        },
+        {
+          "name": "黒",
+          "share": 0.3379
+        },
+        {
+          "name": "グレー",
+          "share": 0.1527
+        },
+        {
+          "name": "白",
+          "share": 0.1157
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0404
+        },
+        {
+          "name": "青",
+          "share": 0.001
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.001
+        },
+        {
+          "name": "緑",
+          "share": 0.0004
+        },
+        {
+          "name": "赤",
+          "share": 0.0001
+        }
+      ],
+      "brightness": 0.4195,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "d16fe7f0203da0a8066e2a9085a4053c7c59fb43e2655e2d314b096ba5b8c3e6"
+    },
+    "men-cityboy-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "青",
+          "share": 0.4442
+        },
+        {
+          "name": "黒",
+          "share": 0.3838
+        },
+        {
+          "name": "緑",
+          "share": 0.0968
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0311
+        },
+        {
+          "name": "グレー",
+          "share": 0.0225
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.0145
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0038
+        },
+        {
+          "name": "白",
+          "share": 0.0028
+        },
+        {
+          "name": "赤",
+          "share": 0.0004
+        },
+        {
+          "name": "黄",
+          "share": 0.0001
+        }
+      ],
+      "brightness": 0.3014,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "b31ab8586c66a2c196b087d74019e742553c530fe048f51c7a7a82c24ea7a976"
+    },
+    "men-sporty-07": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "グレー",
+          "share": 0.4793
+        },
+        {
+          "name": "黒",
+          "share": 0.286
+        },
+        {
+          "name": "青",
+          "share": 0.1455
+        },
+        {
+          "name": "赤",
+          "share": 0.0524
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0183
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0135
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.0045
+        },
+        {
+          "name": "白",
+          "share": 0.0005
+        }
+      ],
+      "brightness": 0.463,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "a40ed2b0a56d70a185d1c80147f1e6d3cce60338a6e7f5f39c30eb481a72f5b4"
+    },
+    "women-clean-07": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "緑",
+          "share": 0.5359
+        },
+        {
+          "name": "黒",
+          "share": 0.2035
+        },
+        {
+          "name": "紫・ピンク",
+          "share": 0.1155
+        },
+        {
+          "name": "青",
+          "share": 0.0473
+        },
+        {
+          "name": "赤",
+          "share": 0.0325
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0192
+        },
+        {
+          "name": "白",
+          "share": 0.0148
+        },
+        {
+          "name": "グレー",
+          "share": 0.0137
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0078
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.0068
+        },
+        {
+          "name": "黄",
+          "share": 0.003
+        }
+      ],
+      "brightness": 0.4721,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "e704a0ece486d11f273682bb6f4d2526a3b3dc9d72e412ba56d480d8eb1346cd"
+    },
+    "women-clean-08": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "グレー",
+          "share": 0.4122
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.3891
+        },
+        {
+          "name": "青",
+          "share": 0.0586
+        },
+        {
+          "name": "黒",
+          "share": 0.0506
+        },
+        {
+          "name": "白",
+          "share": 0.0366
+        },
+        {
+          "name": "赤",
+          "share": 0.0207
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0174
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0112
+        },
+        {
+          "name": "紫・ピンク",
+          "share": 0.0036
+        }
+      ],
+      "brightness": 0.5262,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "24664975e7b8e2aa22dd8506e88e6297118d4a5069fe0826a38dd8d4b0f3fff3"
+    },
+    "women-casual-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "グレー",
+          "share": 0.2096
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.1828
+        },
+        {
+          "name": "黒",
+          "share": 0.1684
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.1282
+        },
+        {
+          "name": "白",
+          "share": 0.1089
+        },
+        {
+          "name": "青",
+          "share": 0.0965
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0881
+        },
+        {
+          "name": "赤",
+          "share": 0.0169
+        },
+        {
+          "name": "紫・ピンク",
+          "share": 0.0006
+        }
+      ],
+      "brightness": 0.5062,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "4de881aed82cb16d3bd6f4a98ea8a9e82d67779d62c6c86fac48693a4b968365"
+    },
+    "women-natural-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "グレー",
+          "share": 0.8175
+        },
+        {
+          "name": "白",
+          "share": 0.0571
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0563
+        },
+        {
+          "name": "黒",
+          "share": 0.027
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0255
+        },
+        {
+          "name": "緑",
+          "share": 0.0073
+        },
+        {
+          "name": "赤",
+          "share": 0.0027
+        },
+        {
+          "name": "青",
+          "share": 0.0024
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.0022
+        },
+        {
+          "name": "黄",
+          "share": 0.002
+        }
+      ],
+      "brightness": 0.7053,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "d8f7dda2e4de41ee1548e09d10ae9f7c23bd5b18ec553d35827c7a306f237d2e"
+    },
+    "women-street-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "青",
+          "share": 0.4466
+        },
+        {
+          "name": "白",
+          "share": 0.2734
+        },
+        {
+          "name": "グレー",
+          "share": 0.1722
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0532
+        },
+        {
+          "name": "赤",
+          "share": 0.0171
+        },
+        {
+          "name": "紫・ピンク",
+          "share": 0.0168
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0147
+        },
+        {
+          "name": "緑",
+          "share": 0.0041
+        },
+        {
+          "name": "黒",
+          "share": 0.0013
+        },
+        {
+          "name": "黄",
+          "share": 0.0006
+        }
+      ],
+      "brightness": 0.7443,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "928f69f2bd72935010d9b76c1043761b1647b6f3ea636ce937e7cc65fde1a6d5"
+    },
+    "women-mode-06": {
+      "method": "central-region-colors-v1",
+      "palette": [
+        {
+          "name": "黒",
+          "share": 0.5624
+        },
+        {
+          "name": "グレー",
+          "share": 0.1403
+        },
+        {
+          "name": "赤",
+          "share": 0.1249
+        },
+        {
+          "name": "ブラウン",
+          "share": 0.0713
+        },
+        {
+          "name": "オレンジ・茶",
+          "share": 0.0569
+        },
+        {
+          "name": "ベージュ",
+          "share": 0.0312
+        },
+        {
+          "name": "緑",
+          "share": 0.0075
+        },
+        {
+          "name": "青",
+          "share": 0.003
+        },
+        {
+          "name": "黄",
+          "share": 0.0014
+        },
+        {
+          "name": "白",
+          "share": 0.0011
+        }
+      ],
+      "brightness": 0.2915,
+      "sampleRegion": [
+        0.28,
+        0.28,
+        0.72,
+        0.88
+      ],
+      "sha256": "1efc30edc685377d0634c9c48bb76b76f7a756d268028049530c701bca45886e"
     }
   }
 }

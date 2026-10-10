@@ -12,7 +12,8 @@
     "fashionclip:precompute": "node --env-file=.env scripts/precompute-fashionclip.cjs",
     "fashionclip:precompute:local": "node --env-file=.env scripts/precompute-fashionclip-local.cjs",
     "test:fashionclip:local": "node scripts/verify-fashion-preference.cjs",
-    "test": "node --test"
+    "test": "node --test",
+    "audit:styles": "node scripts/audit-style-coverage.cjs"
   },
   "engines": {
     "node": ">=20"

@@ -102,6 +102,21 @@
     }, {});
   }
 
+  function rankStylePreferences(cards, likedIds, audience = "all") {
+    const liked = new Set(likedIds);
+    const scores = new Map();
+    for (const card of cards) {
+      if (!card.styleId || (audience !== "all" && card.audience !== audience)) continue;
+      const entry = scores.get(card.styleId) || { id: card.styleId, name: card.category, audience: card.audience, likes: 0, dislikes: 0 };
+      if (liked.has(card.id)) entry.likes++;
+      else if (!card.neutral) entry.dislikes++;
+      scores.set(card.styleId, entry);
+    }
+    return [...scores.values()].filter((entry) => entry.likes > 0)
+      .map((entry) => ({ ...entry, score: entry.likes * 2 - entry.dislikes })).filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || b.likes - a.likes || a.name.localeCompare(b.name, "ja"));
+  }
+
   function rankTags(scores) {
     return Object.entries(scores)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
@@ -259,7 +274,10 @@
         destination[value] = (count.yes - count.no * 0.35) / (count.yes + count.no + 1);
       }
     }
-    return { weights, features, colorWeights,
+    const rankedStyles = rankStylePreferences(cards, likedIds);
+    const styleWeights = Object.fromEntries(rankedStyles.map((style) => [style.id, style.score]));
+    const styleNames = Object.fromEntries(rankedStyles.map((style) => [style.id, style.name]));
+    return { weights, features, colorWeights, styleWeights, styleNames,
       photoColorSummary: Object.entries(colorWeights).filter(([, weight]) => weight > 0)
         .sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name]) => name),
       likedCards: cards.filter((card) => liked.has(card.id) && !card.neutral),
@@ -273,14 +291,19 @@
       .sort((a, b) => (preference.features[b] ?? preference.weights[b]) - (preference.features[a] ?? preference.weights[a]));
     const affinity = (candidate.tags || []).reduce((sum, tag) => sum + (preference.weights[tag] || 0) * 3, 0)
       + (candidate.features || []).reduce((sum, feature) => sum + (preference.features[feature] || 0) * 6, 0)
+      + (candidate.styleId ? Math.max(0, preference.styleWeights?.[candidate.styleId] || 0) * 8 : 0)
       // Image colors include background/skin, so use only a small tie-breaker.
       + (candidate.imageAnalysis?.palette || []).reduce((sum, color) =>
         sum + color.share * (preference.colorWeights?.[color.name] || 0), 0);
     const evidence = preference.likedCards.filter((card) =>
+      (candidate.styleId && card.styleId === candidate.styleId) ||
       (card.features || []).some((feature) => (candidate.features || []).includes(feature)) ||
       card.tags.some((tag) => (candidate.tags || []).includes(tag))).slice(0, 2);
-    return { affinity, matches: [...new Set(matches)].slice(0, 3), evidenceIds: evidence.map((card) => card.id),
-      reason: matches.length ? `選んだ服の「${[...new Set(matches)].slice(0, 3).join("・")}」と共通する候補。`
+    const styleMatch = candidate.styleId && (preference.styleWeights?.[candidate.styleId] || 0) > 0;
+    const styleName = styleMatch ? preference.styleNames[candidate.styleId] : null;
+    return { affinity, matches: [...new Set(styleMatch ? [styleName, ...matches] : matches)].slice(0, 3), evidenceIds: evidence.map((card) => card.id),
+      reason: styleMatch ? `好きと答えた${styleName}の服です。`
+        : matches.length ? `選んだ服の「${[...new Set(matches)].slice(0, 3).join("・")}」と共通する候補。`
         : "選択との共通点はまだ少なめ。比較用の候補です。" };
   }
 
@@ -351,6 +374,7 @@
     selectNovelLooks,
     countTags,
     countCategories,
+    rankStylePreferences,
     rankTags,
     getArchetype,
     rankArchetypes,

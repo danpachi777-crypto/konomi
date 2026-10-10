@@ -99,7 +99,7 @@ realTest('既存UIの実スワイプ・戻る・追加ラウンドを実embeddin
     addEventListener() {}, querySelectorAll() { return []; }, querySelector() { return node(); } });
   const document = { body: { dataset: {} }, addEventListener() {}, getElementById: node, querySelectorAll() { return []; }, querySelector: node };
   const context = vm.createContext({ window: { KONOMI_CARDS: cards, KONOMI_RECOMMENDATIONS: recommendations,
-    KONOMI_PRODUCTS: [], KONOMI_SHOPS: [], KonomiLogic: logic, KonomiFashionPreference: preference, setTimeout() {} },
+    KONOMI_PRODUCTS: [], KONOMI_SHOPS: [], KonomiLogic: logic, KonomiDiagnosisPool: require('../diagnosis-pool.js'), KonomiFashionPreference: preference, setTimeout() {} },
     document, location: { search: '', protocol: 'http:' }, navigator: {}, URL, URLSearchParams, Date,
     localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     setTimeout() {}, clearTimeout() {}, realCatalog: catalog });
@@ -107,9 +107,9 @@ realTest('既存UIの実スワイプ・戻る・追加ラウンドを実embeddin
   vm.runInContext(source, context);
   const run = code => vm.runInContext(code, context);
   run("fashionPreference = window.KonomiFashionPreference.createController(realCatalog, window.KonomiFashionPreference.createLocalStorageAdapter(localStorage)); state.profileCompleted = true; state.profile.gender = 'men'; state.route = 'swipe'; persist();");
-  assert.equal(run('diagnosisCards().length'), 20);
+  assert.equal(run('diagnosisCards().length'), 150);
   const seen = new Set();
-  for (let index = 0; index < 20; index++) {
+  for (let index = 0; index < 150; index++) {
     const id = run('diagnosisCards()[state.current].id');
     assert.equal(seen.has(id), false); seen.add(id);
     run(`recordChoice('${index % 5 === 4 ? 'skip' : index % 3 ? 'like' : 'no'}')`);
@@ -134,6 +134,6 @@ realTest('既存UIの実スワイプ・戻る・追加ラウンドを実embeddin
     }
   }
   assert.equal(run('state.recommendationCompleted'), true);
-  assert.ok(JSON.parse(values.get('konomi-fashion-preference-v1')).vector);
-  assert.equal(seen.size, 26);
+  assert.ok(run("window.KonomiLogic.rankStylePreferences(recommendationInputs().cards, recommendationInputs().likedIds, 'men').length") > 0);
+  assert.equal(seen.size, 156);
 });

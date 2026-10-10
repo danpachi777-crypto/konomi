@@ -197,3 +197,30 @@ button:focus-visible, a:focus-visible { outline: 3px solid #729534; outline-offs
   .result-copy .personal-title { font-size: 26px; }
   .swipe-actions { gap: 8px; }
 }
+
+.style-feed { margin: 36px 0; }
+.style-feed-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.style-feed-card { overflow: hidden; border-radius: 18px; background: #fff; box-shadow: 0 8px 30px rgba(25, 31, 28, .08); }
+.style-feed-card img { display: block; width: 100%; height: 260px; object-fit: cover; object-position: center 30%; }
+.style-feed-card div { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; padding: 14px; }
+.style-feed-card b { font-size: 15px; }
+.style-feed-card small { flex: none; color: #777; }
+@media (max-width: 650px) {
+  .style-feed-grid { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; }
+  .style-feed-card { flex: 0 0 min(70vw, 250px); scroll-snap-align: start; }
+  .style-feed-card img { height: 280px; }
+}
+
+/* Photo-first diagnosis: the photo is the question, and the two choices stay visible. */
+.diagnosis-screen, .discover-screen { padding-top: 14px; }
+.restart-diagnosis, .result-quick-actions button { border: 0; background: transparent; color: #65705d; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 8px 4px; }
+.swipe-shortcuts { display: flex; gap: 16px; }
+.diagnosis-screen .swipe-heading, .discover-screen .swipe-heading { justify-content: flex-end; }
+.diagnosis-screen .card-stage, .discover-screen .card-stage { height: min(69vh, 690px); }
+.diagnosis-screen .swipe-actions, .discover-screen .swipe-actions { grid-template-columns: 42px minmax(104px, 1fr) minmax(104px, 1fr) 52px; gap: 10px; max-width: 390px; margin: 12px auto 0; }
+.diagnosis-screen .choice-button, .discover-screen .choice-button { width: 100%; height: 56px; border-radius: 15px; font-size: 15px; font-weight: 800; }
+.diagnosis-screen .no-button, .discover-screen .no-button { background: #fff; color: #333b32; }
+.diagnosis-screen .like-button, .discover-screen .like-button { background: var(--highlight); color: var(--ink); }
+.diagnosis-screen .swipe-actions .text-button { font-size: 11px; padding: 0; }
+.result-quick-actions { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.result-quick-actions button { border-bottom: 1px solid currentColor; }

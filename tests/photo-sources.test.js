@@ -49,7 +49,7 @@ test("表示用ディレクトリに旧生成PNGが残っていない", () => {
 test("診断データで参照する写真と出典台帳が一致する", () => {
   const cards = require("../data.js");
   assert.deepEqual(
-    new Set(cards.map((card) => card.image)),
+    new Set(cards.filter((card) => !card.generated).map((card) => card.image)),
     new Set(manifest.items.map((item) => item.localPath))
   );
 });

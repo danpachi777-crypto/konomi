@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   calculateProfile,
+  rankStylePreferences,
   selectRecommendations,
   selectPersonalizedLooks,
   filterCardsByAudience,
@@ -65,6 +66,19 @@ test("選択した性別に合う診断カードだけを表示する", () => {
   assert.deepEqual(filterCardsByAudience(audienceCards, "women").map((card) => card.id), ["w", "a"]);
   assert.deepEqual(filterCardsByAudience(audienceCards, "men").map((card) => card.id), ["m", "a"]);
   assert.equal(filterCardsByAudience(audienceCards, "all").length, 3);
+});
+
+test("診断で好きと答えた系統を結果に出し、同じ系統の服を先に流す", () => {
+  const diagnosis = [
+    { id: "military", audience: "men", styleId: "men_military", category: "ミリタリー", tags: ["ミリタリー", "カーゴ"], features: [] },
+    { id: "street", audience: "men", styleId: "men_street", category: "ストリート", tags: ["ストリート", "カーゴ"], features: [] }
+  ];
+  assert.equal(rankStylePreferences(diagnosis, ["military"], "men")[0].name, "ミリタリー");
+  const looks = [
+    { id: "other", audience: "men", styleId: "men_street", category: "ストリート", tags: ["カーゴ"], features: [] },
+    { id: "match", audience: "men", styleId: "men_military", category: "ミリタリー", tags: ["カーゴ"], features: [] }
+  ];
+  assert.equal(selectPersonalizedLooks(looks, diagnosis, ["military"], "men")[0].id, "match");
 });
 
 test("実在商品を性別と好みの一致度で絞り込む", () => {

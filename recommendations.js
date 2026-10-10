@@ -9,6 +9,6 @@
   return cards.map((card) => ({
     ...card,
     id: `r-${card.id}`,
-    summary: `${card.label}。服全体の組み合わせが確認できる実写から、${card.category}の好みとディテールを比較できます。`
+    summary: `${card.label}。${card.generated ? "生成したスタイル写真" : "服全体の組み合わせが確認できる実写"}から、${card.category}の好みとディテールを比較できます。`
   }));
 });

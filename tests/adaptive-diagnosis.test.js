@@ -8,13 +8,13 @@ const recommendations = require("../recommendations.js");
 const brands = require("../specialist-brands.js");
 const logic = require("../logic.js");
 
-test("初回と追加診断の画像を男女別に分離し、初回で13カテゴリーを網羅する", () => {
+test("初回と追加診断の画像を男女別に分離し、初回で26系統を網羅する", () => {
   for (const audience of ["men", "women"]) {
     const initial = cards.filter((card) => card.audience === audience && card.phase === "initial");
     const extra = cards.filter((card) => card.audience === audience && card.phase === "refinement");
-    assert.equal(initial.length, 13);
+    assert.equal(initial.length, audience === "men" ? 14 : 12);
     assert.ok(extra.length >= 13);
-    assert.equal(new Set(initial.map((card) => card.category)).size, 13);
+    assert.equal(new Set(initial.map((card) => card.category)).size, initial.length);
     assert.equal(initial.some((card) => extra.some((item) => item.image === card.image)), false);
   }
 });
@@ -66,7 +66,7 @@ function appHarness() {
     querySelector() { return node(); } };
   const context = vm.createContext({
     window: { KONOMI_CARDS: cards, KONOMI_RECOMMENDATIONS: recommendations, KONOMI_PRODUCTS: brands,
-      KONOMI_SHOPS: [], KonomiLogic: logic, setTimeout() {} },
+      KONOMI_SHOPS: [], KonomiLogic: logic, KonomiDiagnosisPool: require('../diagnosis-pool.js'), setTimeout() {} },
     document, location: { search: "?demo=result", protocol: "http:" }, navigator: {},
     localStorage: { getItem() { return null; }, setItem() {} }, URLSearchParams, URL, setTimeout() {}, clearTimeout() {}
   });
@@ -76,6 +76,19 @@ function appHarness() {
   evaluate("state.diagnosisIds = cards.filter(card => card.audience === 'men' && card.phase === 'initial').map(card => card.id)");
   return { evaluate, selectedDetails, elements };
 }
+
+test("診断をやり直すと保存した対象設定のまま1枚目から再開する", () => {
+  const app = appHarness();
+  app.evaluate("state.current = 7; state.history = [{ id: 'style-men_trad', choice: 'like' }]; state.likedIds = ['style-men_trad']; state.profileCompleted = true; state.profile.gender = 'men'; state.sessionCompleted = true; state.savedRecommendationIds = ['r-men-clean-01'];");
+  app.evaluate("resetDiagnosis()");
+  assert.equal(app.evaluate("state.route"), "swipe");
+  assert.equal(app.evaluate("state.current"), 0);
+  assert.equal(app.evaluate("state.history.length"), 0);
+  assert.equal(app.evaluate("state.likedIds.length"), 0);
+  assert.equal(app.evaluate("state.savedRecommendationIds.length"), 0);
+  assert.equal(app.evaluate("state.diagnosisIds.length"), 150);
+  assert.equal(app.evaluate("state.profile.gender"), "men");
+});
 
 test("追加診断の順序を固定し、回答で順位が変わっても飛ばしや重複を起こさない", () => {
   const app = appHarness();

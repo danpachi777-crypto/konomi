@@ -1,10 +1,12 @@
 (function (root, factory) {
   const analysis = typeof module === "object" && module.exports
     ? require("./photo-analysis.js") : (root.window || root).KONOMI_PHOTO_ANALYSIS;
-  const cards = factory(analysis);
+  const generatedLooks = typeof module === "object" && module.exports
+    ? require("./generated-outfits.js") : (root.window || root).KONOMI_GENERATED_OUTFITS;
+  const cards = factory(analysis, generatedLooks);
   if (typeof module === "object" && module.exports) module.exports = cards;
   else (root.window || root).KONOMI_CARDS = cards;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (analysis) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (analysis, generatedLooks) {
   const TAGS = {
     clean: ["きれいめ", "上品", "クラシック", "直線的"],
     casual: ["カジュアル", "ベーシック", "デニム", "リラックス"],
@@ -171,12 +173,96 @@
     make("women-natural-05", "women", "自然体ナチュラル", "ベージュロングコートと白パンツ", TAGS.natural),
     make("women-vintage-07", "women", "古着・ヴィンテージ", "ベージュコートと柄スカート・ブラウンブーツ", TAGS.vintage),
     // additional-outfits:end
+    // japan-everyday-outfits:start
+    make("men-clean-06", "men", "洗練きれいめ", "白シャツと黒スラックスのオフィスコーデ", TAGS.clean),
+    make("men-casual-07", "men", "デイリーカジュアル", "黒Tシャツと淡いデニム・白スニーカー", TAGS.casual),
+    make("men-amekaji-06", "men", "王道アメカジ", "チェックシャツと黒パンツの重ね着", TAGS.amekaji),
+    make("men-mode-06", "men", "エッジ・モード系", "黒レザージャケットと黒パンツ", TAGS.mode),
+    make("men-cityboy-06", "men", "シティーボーイ系", "黒ジャケットとパンツ・ハイカットスニーカー", TAGS.cityboy),
+    make("men-sporty-07", "men", "アクティブ・スポーティ", "チャコールTシャツと黒パンツ・白スニーカー", TAGS.sporty),
+    make("women-clean-07", "women", "洗練きれいめ", "紫ブラウスと黒ロングスカート", TAGS.clean),
+    make("women-clean-08", "women", "洗練きれいめ", "ブラウンコートとグレーパンツ", TAGS.clean),
+    make("women-casual-06", "women", "デイリーカジュアル", "白カーディガンとブルーデニム", TAGS.casual),
+    make("women-natural-06", "women", "自然体ナチュラル", "セージ色の羽織りとベージュのロングスカート", TAGS.natural),
+    make("women-street-06", "women", "都会派ストリート", "ネイビーのゆったりトップスとショートボトム", TAGS.street),
+    make("women-mode-06", "women", "エッジ・モード系", "赤い羽織りと黒のワイドパンツ", TAGS.mode),
+    // japan-everyday-outfits:end
   ];
+  for (const look of generatedLooks || []) {
+    const template = cards.find((card) => card.id === look.template);
+    if (!template) throw new Error(`Unknown generated outfit template: ${look.template}`);
+    cards.push({
+      id: look.id, image: look.image, audience: look.audience,
+      category: look.category || template.category, label: look.label, tags: template.tags, styleId: look.styleId,
+      features: outfitFeatures(look.label), imageAnalysis: null,
+      phase: "refinement", generated: true, generatedPhoto: true, jpDailyLook: true
+    });
+  }
+  // Each requested style has its own diagnosis photograph and stable identifier.
+  const styleSpecs = [
+    ["men", "トラッド", "men_trad", "ネイビーブレザーとタイ・ベージュパンツ", ["トラッド", "きれいめ", "クラシック", "ジャケット"]],
+    ["men", "プレッピー", "men_preppy", "カレッジブレザーとチノパン", ["プレッピー", "きれいめ", "シャツ", "カジュアル"]],
+    ["men", "きれいめカジュアル", "men_clean_casual", "軽いジャケットとスラックス・スニーカー", ["きれいめカジュアル", "きれいめ", "カジュアル", "ジャケット"]],
+    ["men", "ビジネス・オフィスカジュアル", "men_business", "ジャケットとシャツ・スラックス", ["ビジネス・オフィスカジュアル", "きれいめ", "ジャケット", "シャツ"]],
+    ["men", "アメカジ", "men_amekaji", "デニムジャケットとストレートデニム", ["アメカジ", "カジュアル", "デニム", "古着"]],
+    ["men", "フレンチカジュアル", "men_french", "ボーダーシャツとトレンチコート", ["フレンチカジュアル", "カジュアル", "ベーシック", "上品"]],
+    ["men", "ミリタリー", "men_military", "カーキのフィールドジャケットとカーゴパンツ", ["ミリタリー", "カジュアル", "カーゴ", "アースカラー"]],
+    ["men", "スポーツミックス", "men_sportmix", "トラックジャケットとスラックス", ["スポーツミックス", "スポーティ", "カジュアル", "軽快"]],
+    ["men", "アウトドア", "men_outdoor", "シェルジャケットとトレイルシューズ", ["アウトドア", "機能的", "アースカラー", "カジュアル"]],
+    ["men", "ストリート", "men_street", "オーバーサイズフーディーとワイドデニム", ["ストリート", "オーバーサイズ", "都会的", "カジュアル"]],
+    ["men", "ワーク", "men_work", "チョアジャケットとワークブーツ", ["ワーク", "カジュアル", "デニム", "機能的"]],
+    ["men", "モード", "men_mode", "構築的な黒いロングコートとワイドパンツ", ["モード", "モノトーン", "個性的", "直線的"]],
+    ["men", "ノームコア", "men_normcore", "無地スウェットとデニム・白スニーカー", ["ノームコア", "ベーシック", "シンプル", "カジュアル"]],
+    ["men", "韓国系", "men_korean", "短丈ジャケットとワイドスラックス", ["韓国系", "都会的", "ワイド", "きれいめ"]],
+    ["women", "カジュアル系", "women_casual", "カーディガンとデニム・スニーカー", ["カジュアル系", "カジュアル", "デニム", "リラックス"]],
+    ["women", "ベーシック系", "women_basic", "白シャツと黒パンツ", ["ベーシック系", "ベーシック", "シンプル", "きれいめ"]],
+    ["women", "トラッド系（ブリティッシュトラッド系）", "women_trad", "チェックブレザーとプリーツスカート", ["トラッド系", "クラシック", "チェック", "きれいめ"]],
+    ["women", "モード系", "women_mode", "立体的な黒トップスとアシンメトリースカート", ["モード系", "モノトーン", "個性的", "直線的"]],
+    ["women", "ガーリー系（ガーリッシュ系）", "women_girly", "淡色カーディガンと花柄スカート", ["ガーリー系", "淡色", "花柄", "やわらかい"]],
+    ["women", "大人女子系", "women_adult", "ブラウスと上品なベージュパンツ", ["大人女子系", "上品", "きれいめ", "落ち着き"]],
+    ["women", "メンズライク系", "women_menslike", "大きめのブレザーとワイドパンツ", ["メンズライク系", "ジャケット", "ワイド", "クール"]],
+    ["women", "ストリート系", "women_street", "ゆったりフーディーとカーゴデニム", ["ストリート系", "オーバーサイズ", "都会的", "カジュアル"]],
+    ["women", "ロック系", "women_rock", "レザージャケットとブラックデニム", ["ロック系", "レザー", "モノトーン", "個性的"]],
+    ["women", "ギャル系", "women_gyaru", "ショート丈ジャケットと厚底ブーツ", ["ギャル系", "トレンド", "華やか", "個性的"]],
+    ["women", "アウトドア系（山ガール系）", "women_outdoor", "カラフルなシェルと山歩きの服", ["アウトドア系", "機能的", "カラフル", "カジュアル"]],
+    ["women", "ミリタリー系", "women_military", "カーキのユーティリティジャケットとカーゴパンツ", ["ミリタリー系", "カーゴ", "アースカラー", "カジュアル"]]
+  ];
+  for (const [audience, category, styleId, label, tags] of styleSpecs) {
+    cards.push({ id: `style-${styleId}`, image: `assets/styles/${styleId}.png`, audience,
+      category, styleId, label, tags, features: outfitFeatures(label), imageAnalysis: null,
+      phase: "initial", generated: true });
+  }
+  const secondLookStyles = new Set(["men_trad", "men_french", "men_military", "men_work",
+    "women_trad", "women_girly", "women_menslike", "women_rock", "women_gyaru", "women_military"]);
+  for (const [audience, category, styleId, , tags] of styleSpecs) {
+    if (!secondLookStyles.has(styleId)) continue;
+    cards.push({ id: `style-${styleId}-feed`, image: `assets/styles/${styleId}-feed.png`, audience,
+      category, styleId, label: `${category}の別コーデ`, tags, features: [category], imageAnalysis: null,
+      phase: "refinement", generated: true });
+  }
+  // Keep saved card IDs stable; legacy photographs remain available for refinement.
+  const firstLook = new Set([
+    "men-clean-06", "men-casual-07", "men-amekaji-06", "men-mode-06", "men-cityboy-06", "men-sporty-07",
+    "women-clean-07", "women-casual-06", "women-natural-06", "women-street-06", "women-mode-06"
+  ]);
+  const preferredGroup = new Map(cards.filter(card => firstLook.has(card.id)).map(card => [card.audience + ":" + card.category, card.id]));
+  const legacyStyles = {
+    men: { "洗練きれいめ": "men_clean_casual", "デイリーカジュアル": "men_normcore",
+      "都会派ストリート": "men_street", "ソウル・韓国系": "men_korean", "エッジ・モード系": "men_mode",
+      "王道アメカジ": "men_amekaji", "シティーボーイ系": "men_preppy", "アクティブ・スポーティ": "men_sportmix",
+      "アウトドア・ゴープコア": "men_outdoor", "古着・ヴィンテージ": "men_work", "Y2Kリバイバル": "men_street", "静かなミニマル": "men_normcore", "自然体ナチュラル": "men_normcore" },
+    women: { "デイリーカジュアル": "women_casual", "静かなミニマル": "women_basic",
+      "洗練きれいめ": "women_adult", "エッジ・モード系": "women_mode", "都会派ストリート": "women_street",
+      "アウトドア・ゴープコア": "women_outdoor", "ソウル・韓国系": "women_adult", "古着・ヴィンテージ": "women_rock", "王道アメカジ": "women_casual", "シティーボーイ系": "women_trad", "アクティブ・スポーティ": "women_outdoor", "Y2Kリバイバル": "women_gyaru", "自然体ナチュラル": "women_casual" }
+  };
   const groups = new Set();
   return cards.map((card) => {
+    if (card.styleId) return card;
+    if (card.generatedPhoto) return { ...card, styleId: legacyStyles[card.audience]?.[card.category] };
     const group = card.audience + ":" + card.category;
-    const phase = groups.has(group) ? "refinement" : "initial";
+    const phase = preferredGroup.has(group) ? preferredGroup.get(group) === card.id ? "initial" : "refinement" : groups.has(group) ? "refinement" : "initial";
     groups.add(group);
-    return { ...card, phase };
+    const styleId = card.id === "men-clean-06" ? "men_business" : legacyStyles[card.audience]?.[card.category];
+    return { ...card, styleId, phase: "refinement", jpDailyLook: firstLook.has(card.id) };
   });
 });

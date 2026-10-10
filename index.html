@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f7f8f6" />
+    <meta name="theme-color" content="#000000" />
     <meta name="description" content="好きな服を左右にスワイプして、自分の好みと着こなしを見つけるアプリ" />
     <script src="local-preview.js?v=21"></script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css?v=21" />
-    <link rel="stylesheet" href="ui-refresh.css?v=21" />
+    <link rel="stylesheet" href="ui-refresh.css?v=27" />
     <link rel="stylesheet" href="fashion-analysis.css?v=23" />
+    <link rel="stylesheet" href="minimal-theme.css?v=30" />
     <title>KONOMI — 好きから、似合うへ。</title>
   </head>
   <body>
@@ -32,8 +33,8 @@
         <button type="button" data-route="discover" aria-label="おすすめコーデ">
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6L12 3Z"/></svg></span><small>おすすめ</small>
         </button>
-        <button type="button" data-route="saved" aria-label="好き">
-          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 4.5a5.2 5.2 0 0 0-7.4 0L12 5.6l-1.1-1.1a5.2 5.2 0 0 0-7.4 7.4L12 20.4l8.5-8.5a5.2 5.2 0 0 0 0-7.4Z"/></svg></span><small>好き</small>
+        <button type="button" data-route="saved" aria-label="あなたが好きな服">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 4.5a5.2 5.2 0 0 0-7.4 0L12 5.6l-1.1-1.1a5.2 5.2 0 0 0-7.4 7.4L12 20.4l8.5-8.5a5.2 5.2 0 0 0 0-7.4Z"/></svg></span><small>あなたが好きな服</small>
         </button>
         <button type="button" data-route="result" aria-label="結果">
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V12M12 20V4M19 20V8"/><path d="M3 20h18"/></svg></span><small>結果</small>
@@ -46,8 +47,8 @@
       <button class="dialog-close" type="button" aria-label="閉じる">×</button>
       <p class="eyebrow">ABOUT KONOMI</p>
       <h2>このサービスについて</h2>
-      <p>現在の写真は合計78枚です。初回は13カテゴリーを見比べ、まだ見ていない候補を最大6枚ずつ追加診断します。選択した服の方向をすべての診断と結果に反映し、色・形など一部だけの好みも回答できます。</p>
-      <p>写真はWebサイトやアプリでの利用が認められたPexels素材です。投稿者には必要なモデル／プロパティリリース等の取得が求められていますが、Pexelsも個別の権利を一律には保証していません。KONOMIでは未成年、服全体が読めない写真、目立つブランドを避け、人物・撮影者による推奨や提携を示さない文脈でのみ使用します。</p>
+      <p>初回はメンズ14系統・ウィメンズ12系統から約150枚をランダムに見比べます。結果に応じて、まだ見ていない服を「あなたが好きな服」に表示します。</p>
+      <p>系統診断と一部の追加写真はAIで生成したイメージです。追加の実写はWebサイトやアプリでの利用が認められたPexels素材を使用しています。人物・撮影者による推奨や提携を示すものではありません。</p>
       <p>おすすめは、選んだ服ごとの配色・形・素材と、選ばなかった服やおすすめへの回答から算出します。ブランドの公式情報を案内し、写真と同じ商品や店頭在庫であるとは断定しません。口コミはGoogle Mapsから取得できた文章のみを出典付きで表示します。</p>
       <div class="dialog-links">
         <a href="credits.html" target="_blank" rel="noopener">写真クレジット一覧</a>
@@ -69,15 +70,17 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <script src="photo-analysis.js?v=21"></script>
-    <script src="data.js?v=21"></script>
+    <script src="photo-analysis.js?v=24"></script>
+      <script src="generated-outfits.js?v=30"></script>
+      <script src="data.js?v=30"></script>
     <script src="specialist-brands.js?v=21"></script>
     <script src="products.js?v=21"></script>
     <script src="shops.js?v=21"></script>
-    <script src="recommendations.js?v=21"></script>
-    <script src="logic.js?v=21"></script>
+      <script src="recommendations.js?v=30"></script>
+    <script src="logic.js?v=25"></script>
     <script src="cloud-sync.js?v=21"></script>
     <script src="fashion-preference.js?v=23"></script>
-    <script src="app.js?v=23"></script>
+      <script src="diagnosis-pool.js?v=31"></script>
+      <script src="app.js?v=32"></script>
   </body>
 </html>

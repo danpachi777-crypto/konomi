@@ -6,8 +6,8 @@ const path = require('node:path');
 const cards = require('../data.js');
 const logic = require('../logic.js');
 
-test('全診断写真に現在のJPEGから計算したPythonの解析結果が付く', () => {
-  for (const card of cards) {
+test('既存の実写写真に現在のJPEGから計算したPythonの解析結果が付く', () => {
+  for (const card of cards.filter((item) => !item.generated)) {
     assert.equal(card.imageAnalysis.method, 'central-region-colors-v1');
     const source = fs.readFileSync(path.join(__dirname, '..', card.image));
     assert.equal(card.imageAnalysis.sha256, crypto.createHash('sha256').update(source).digest('hex'));

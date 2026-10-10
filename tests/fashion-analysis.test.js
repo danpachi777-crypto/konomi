@@ -19,7 +19,7 @@ function harness(values = new Map(), withCatalog = false) {
     getElementById(id) { if (!elements.has(id)) elements.set(id, node()); return elements.get(id); },
     querySelectorAll() { return []; }, querySelector: node };
   const context = vm.createContext({ window: { KONOMI_CARDS: cards, KONOMI_RECOMMENDATIONS: recommendations,
-    KONOMI_PRODUCTS: [], KONOMI_SHOPS: [], KonomiLogic: logic, KonomiFashionPreference: preference, setTimeout() {} },
+    KONOMI_PRODUCTS: [], KONOMI_SHOPS: [], KonomiLogic: logic, KonomiDiagnosisPool: require('../diagnosis-pool.js'), KonomiFashionPreference: preference, setTimeout() {} },
     document, location: { search: '', protocol: 'http:' }, navigator: {}, URL, URLSearchParams, Date,
     localStorage: { getItem: key => values.get(key), setItem: (key, value) => values.set(key, value) },
     setTimeout() {}, clearTimeout() {}, realCatalog: catalog,
@@ -112,16 +112,16 @@ realTest('評価済み写真の再比較をskipしても、前回評価を再利
   assert.deepEqual(controller.update(legacy).vector, preference.calculate(catalog, [{ id: a.id, action: 'like' }]).vector);
 });
 
-realTest('UIのlike/dislike・skip・分析への遷移・再読込復元が実embeddingで整合する', () => {
+realTest('新しい系統写真にembeddingがない間はスコアを捏造せず回答を復元する', () => {
   const app = harness(new Map(), true);
-  app.run("state.profileCompleted = true; state.profile.gender = 'men'; state.route = 'swipe'; persist(); renderSwipe();");
+  app.run("state.profileCompleted = true; state.profile.gender = 'men'; state.route = 'swipe'; state.diagnosisIds = window.KONOMI_CARDS.filter(card => card.audience === 'men' && card.generatedPhoto).slice(0, 3).map(card => card.id); persist(); renderSwipe();");
   assert.equal(app.html().includes('data-style-score='), false);
   const first = app.run('diagnosisCards()[state.current].id');
   app.run("recordChoice('like')");
-  assert.ok(app.html().includes('data-style-score='));
+  assert.equal(app.html().includes('data-style-score='), false);
   const before = app.run('JSON.stringify(fashionPreference.snapshot().vector)');
   app.run("recordChoice('no')");
-  assert.notEqual(app.run('JSON.stringify(fashionPreference.snapshot().vector)'), before);
+  assert.equal(app.run('JSON.stringify(fashionPreference.snapshot().vector)'), before);
   const priorSkip = app.run('JSON.stringify(fashionPreference.snapshot().vector)');
   const firstScore = app.run(`styleScoreHTML(${JSON.stringify(first)})`);
   app.run("recordChoice('skip')");
@@ -132,7 +132,7 @@ realTest('UIのlike/dislike・skip・分析への遷移・再読込復元が実e
   assert.ok(app.html().includes('<dt>dislike</dt><dd>1'));
   assert.ok(app.html().includes('<dt>skip</dt><dd>1'));
   assert.ok(app.html().includes('少ない回答'));
-  assert.ok(app.html().includes('data-style-score-item="' + first + '"'));
+  assert.ok(app.html().includes('診断'));
   const restored = harness(app.values, true);
   restored.run('render()');
   assert.equal(restored.run('state.route'), 'analysis');
@@ -152,7 +152,8 @@ realTest('結果・保存画面でもスコアを表示し、架空の系統％�
   assert.ok(app.html().includes('あなたの選択をもとにした、好みとの近さ'));
   assert.equal(/<em>\d+%<\/em>/.test(app.html()), false);
   app.run('renderSaved()');
-  assert.ok(app.html().includes('data-style-score='));
+  assert.ok(app.html().includes('あなたが好きな服'));
+  assert.equal(app.html().includes('診断で「好き」と答えた写真'), false);
   app.run('state.history = []; state.likedIds = []; persist(); renderResult();');
   assert.equal(app.html().includes('data-style-score='), false);
   assert.equal(app.html().includes('ニュートラル'), false);

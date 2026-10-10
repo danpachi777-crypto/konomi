@@ -1,0 +1,104 @@
+/* Two-color interface. Outfit photos and the external map retain their source colors. */
+:root {
+  --paper: #000000;
+  --white: #000000;
+  --ink: #2f8f61;
+  --muted: #2f8f61;
+  --line: #2f8f61;
+  --accent: #2f8f61;
+  --highlight: #2f8f61;
+  --sage: #2f8f61;
+  --yellow: #2f8f61;
+  --radius: 8px;
+}
+
+html, body { background: #000000 !important; color: #2f8f61 !important; }
+body :where(*) { color: #2f8f61 !important; background-color: transparent !important; background-image: none !important; border-color: #2f8f61 !important; outline-color: #2f8f61 !important; box-shadow: none !important; text-shadow: none !important; }
+body :where(*)::before, body :where(*)::after { color: #2f8f61 !important; background-color: transparent !important; background-image: none !important; border-color: #2f8f61 !important; box-shadow: none !important; }
+::selection { background: #2f8f61; color: #000000; }
+input, select, textarea { accent-color: #2f8f61; caret-color: #2f8f61; }
+input::placeholder { color: #2f8f61; opacity: 1; }
+
+/* Flat surfaces and simple edges. */
+.topbar, .profile-form, .result-hero, .result-panel, .shop-section, .store-section,
+.diagnosis-analysis, .product-card, .store-card, .novel-look-card, .style-feed-card,
+.style-score, .taste-counts > div, .taste-liked-card, .analysis-insights article,
+.discover-invite, .sheet-dialog, .toast, .bottom-nav, .map-panel,
+.counter, .home-collage, .home-tastes span, .profile-summary > span,
+.choice-grid label > span, .field-group input, .field-group select {
+  background-color: #000000 !important;
+  border: 1px solid #2f8f61 !important;
+  border-radius: 8px !important;
+}
+.topbar { border-width: 0 0 1px !important; }
+.home-collage, .result-hero { overflow: hidden; }
+.home-collage::before, .collage-label, .floating-like, .home-tastes { display: none !important; }
+.home-collage img, .result-photo-stack img, .profile-preview img, .complete-collage img {
+  transform: none !important;
+  border: 1px solid #2f8f61 !important;
+  border-radius: 8px !important;
+}
+.home-copy h1 em { font-style: normal; text-decoration: underline; text-decoration-color: #2f8f61; text-underline-offset: .12em; }
+.step-number { opacity: 1; }
+
+/* Actions use the green fill, with black labels for contrast. */
+.primary-button, .like-button, .bottom-nav button.is-active,
+.choice-grid input:checked + span, .occasion-tabs button.is-selected,
+.recommendation-feedback button[aria-pressed="true"],
+.recommendation-feedback button:first-child, .brand-mark {
+  background-color: #2f8f61 !important;
+  color: #000000 !important;
+  border: 1px solid #2f8f61 !important;
+  border-radius: 8px !important;
+}
+.primary-button *, .like-button *, .bottom-nav button.is-active *,
+.choice-grid input:checked + span *, .occasion-tabs button.is-selected *,
+.recommendation-feedback button[aria-pressed="true"] *,
+.recommendation-feedback button:first-child *, .brand-mark * { color: #000000 !important; }
+.primary-button > span { background-color: #000000 !important; color: #2f8f61 !important; }
+.secondary-button, .dark-button, .no-button, .undo-button, .text-button,
+.recommendation-feedback button, .bottom-nav button, .dialog-close {
+  background-color: #000000 !important;
+  color: #2f8f61 !important;
+  border: 1px solid #2f8f61 !important;
+  border-radius: 8px !important;
+}
+.primary-button:hover, .like-button:hover, .choice-button:hover { transform: none; }
+.choice-button, .undo-button { border-radius: 8px !important; }
+.bottom-nav { border-radius: 8px !important; backdrop-filter: none; }
+.progress-track, .meter { background-color: #000000 !important; border: 1px solid #2f8f61 !important; border-radius: 2px !important; }
+.progress-track span, .meter i, .home-status > span { background-color: #2f8f61 !important; border-radius: 2px !important; }
+
+/* Give photo captions a solid reading area without tinting the clothes. */
+.fashion-card, .fashion-card img, .novel-look-photo, .recommend-card img,
+.saved-card img, .taste-liked-card img, .style-feed-card img { background-color: #000000 !important; }
+.fashion-card { display: flex; flex-direction: column; border: 1px solid #2f8f61 !important; border-radius: 8px !important; }
+.fashion-card img { display: block; flex: 1 1 auto; min-height: 0; height: auto; object-fit: contain; }
+.card-shade { display: none !important; }
+.card-caption { position: static; flex: 0 0 auto; padding: 15px 18px; background-color: #000000 !important; border-top: 1px solid #2f8f61 !important; }
+.card-caption > span { padding: 0; backdrop-filter: none; }
+.card-caption h2 { margin-top: 4px; }
+.card-caption p { margin: 4px 0 0; }
+.stamp-like, .stamp-no { background-color: #000000 !important; color: #2f8f61 !important; }
+
+.tag-row span, .style-type-row > div, .product-tags span,
+.recommendation-feedback button, .profile-summary > span { border: 1px solid #2f8f61 !important; border-radius: 8px !important; }
+.style-feed-card img { border-bottom: 1px solid #2f8f61 !important; }
+.result-photo-stack > span { background-color: #000000 !important; border: 1px solid #2f8f61 !important; }
+.map-panel iframe { border-top: 1px solid #2f8f61 !important; }
+.sheet-dialog::backdrop { background: #000000 !important; backdrop-filter: none; }
+
+@media (max-width: 800px) {
+  .home-screen { gap: 24px; }
+  .home-collage { height: 340px; }
+  .card-stage { height: clamp(420px, 62svh, 620px); }
+  .result-hero { gap: 24px; }
+}
+
+/* Result-based discoveries use only previously unseen outfit photographs. */
+.favorite-discovery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin: 24px 0; }
+.favorite-discovery-card { overflow: hidden; border: 1px solid #2f8f61; border-radius: 8px; background: #000; }
+.favorite-discovery-card img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
+.favorite-discovery-card span { display: block; padding: 10px 12px; color: #f7f5ed; font-size: 13px; }
+.bottom-nav button[data-route="saved"] small { font-size: 10px; white-space: nowrap; }
+@media (max-width: 600px) { .favorite-discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .favorite-discovery-card span { font-size: 11px; padding: 8px; } }

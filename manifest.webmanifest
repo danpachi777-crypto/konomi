@@ -4,8 +4,8 @@
   "description": "左右のスワイプから服の好みを見つけるアプリ",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f4f0e8",
-  "theme_color": "#f4f0e8",
+  "background_color": "#000000",
+  "theme_color": "#000000",
   "lang": "ja",
   "icons": [
     {

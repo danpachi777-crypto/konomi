@@ -103,9 +103,9 @@ test('デモモードは認証・履歴の外部送信を一切しない', async
   await sync.initialize(); sync.record('men-clean-01', 'like'); await sync.flush();
 });
 
-test('104枚の既存写真の出典・権利台帳を事前登録に使う', () => {
+test('116枚の既存写真の出典・権利台帳を事前登録に使う', () => {
   const items = loadRegisteredItems();
-  assert.equal(items.length, 104);
+  assert.equal(items.length, 116);
   assert.ok(items.every((item) => item.source_url.startsWith('https://') && item.license_url && /^[a-f0-9]{64}$/.test(item.image_sha256)));
   assert.throws(() => validateVector(Array(512).fill(0)));
 });
@@ -124,7 +124,7 @@ test('バッチは同じ内容・モデル版の保存済みembeddingを再利�
         embedding_model: 'patrickjohncyh/fashion-clip', embedding_model_version: version, embedded_at: '2026-01-01T00:00:00Z' })));
       writes++; return respond(null, 201);
     } });
-  assert.equal(inferCalls, 0); assert.equal(writes, 104); assert.equal(result.reused, 104);
+  assert.equal(inferCalls, 0); assert.equal(writes, items.length); assert.equal(result.reused, items.length);
 });
 
 test('実推論失敗時はembeddingを保存せずバッチを失敗として終了する', async () => {
@@ -152,7 +152,7 @@ test('台帳のみの登録では推論を呼ばず、変更のない保存済�
     else assert.equal(row.embedding, null);
     return respond(null);
   } });
-  assert.equal(calls, 104);
+  assert.equal(calls, items.length);
 });
 
 test('SQLは既存テーブルを上書きせず、RLSとユニーク制約を備える（静的検査）', () => {
@@ -173,5 +173,5 @@ test('新形式Supabase secretキーをJWTとしてAuthorizationに送らない'
       if (options.method === 'GET') return respond([]);
       writes++; return respond(null);
     } });
-  assert.equal(writes, 104);
+  assert.equal(writes, loadRegisteredItems().length);
 });
