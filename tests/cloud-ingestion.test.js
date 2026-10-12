@@ -98,6 +98,96 @@ test('送信中に回答が変わっても最新回答を消さず、順番に�
   assert.deepEqual(writes, ['like', 'dislike']);
 });
 
+test('再起動後もログインを保持し、更新トークンを保存する', async () => {
+  const local = storage(), tab = storage();
+  const key = 'konomi-cloud-session-v1';
+  const login = { user: { id: 'user-a' }, access_token: 'old.jwt', refresh_token: 'old-refresh', expires_at: 1 };
+  const renewed = { user: { id: 'user-a' }, access_token: 'new.jwt', refresh_token: 'new-refresh', expires_at: Date.now() / 1000 + 300 };
+  let logins = 0, refreshes = 0;
+  const fetchImpl = async (url, options) => {
+    if (url === '/api/cloud/config') return respond({ configured: true });
+    if (url === '/api/cloud/login') { logins++; return respond(login); }
+    if (url === '/api/cloud/refresh') { refreshes++; assert.equal(JSON.parse(options.body).refresh_token, 'old-refresh'); return respond(renewed); }
+    return respond({ ok: true });
+  };
+  const first = createSync({ storage: local, sessionStorage: tab, fetchImpl });
+  await first.initialize(); await first.login('a@example.com', 'fixture');
+  assert.equal(tab.getItem(key), null);
+  assert.equal(JSON.parse(local.getItem(key)).refresh_token, 'old-refresh');
+  const statuses = [];
+  const reopened = createSync({ storage: local, sessionStorage: storage(), fetchImpl, onStatus: (value) => statuses.push(value) });
+  await reopened.initialize();
+  assert.equal(logins, 1); assert.equal(refreshes, 1);
+  assert.equal(JSON.parse(local.getItem(key)).refresh_token, 'new-refresh');
+  assert.equal(statuses.at(-1).signedIn, true);
+  await reopened.logout();
+  assert.equal(local.getItem(key), null);
+});
+
+test('旧タブセッションを移行し、通信障害ではログインを消さない', async () => {
+  const local = storage(), tab = storage(), key = 'konomi-cloud-session-v1';
+  tab.setItem(key, JSON.stringify({ user: { id: 'user-a' }, access_token: 'old.jwt', refresh_token: 'refresh', expires_at: 1 }));
+  const statuses = [];
+  const sync = createSync({ storage: local, sessionStorage: tab, onStatus: (value) => statuses.push(value),
+    fetchImpl: async (url) => { if (url === '/api/cloud/config') return respond({ configured: true }); throw new Error('Offline'); } });
+  await sync.initialize();
+  assert.equal(tab.getItem(key), null);
+  assert.ok(local.getItem(key));
+  assert.equal(statuses.at(-1).signedIn, true);
+  assert.match(statuses.at(-1).message, /端末に保持/);
+});
+
+test('無効になった更新トークンだけ再ログインを求める', async () => {
+  const local = storage(), key = 'konomi-cloud-session-v1';
+  local.setItem(key, JSON.stringify({ user: { id: 'user-a' }, access_token: 'old.jwt', refresh_token: 'revoked', expires_at: 1 }));
+  const statuses = [];
+  const sync = createSync({ storage: local, sessionStorage: storage(), onStatus: (value) => statuses.push(value),
+    fetchImpl: async (url) => url === '/api/cloud/config' ? respond({ configured: true }) : respond({ error: 'Invalid session' }, 401) });
+  await sync.initialize();
+  assert.equal(local.getItem(key), null);
+  assert.equal(statuses.at(-1).signedIn, false);
+});
+
+test('ログイン済みアプリはオフライン中の回答を再接続後に送る', async () => {
+  const local = storage(), key = 'konomi-cloud-session-v1';
+  local.setItem(key, JSON.stringify({ user: { id: 'user-a' }, access_token: 'jwt', refresh_token: 'refresh',
+    expires_at: Date.now() / 1000 + 300 }));
+  let online = false;
+  const writes = [];
+  const sync = createSync({ storage: local, sessionStorage: storage(), fetchImpl: async (url, options) => {
+    if (!online) throw new Error('Offline');
+    if (url === '/api/cloud/config') return respond({ configured: true });
+    if (url === '/api/swipes') writes.push(JSON.parse(options.body));
+    return respond({ ok: true });
+  } });
+  await sync.initialize();
+  assert.equal(sync.getUserId(), 'user-a');
+  sync.record('men-clean-01', 'like');
+  assert.ok(local.getItem('konomi-cloud-pending-v1:user-a').includes('like'));
+  online = true;
+  await sync.initialize();
+  assert.deepEqual(writes.map((entry) => entry.action), ['like']);
+});
+
+test('新規登録は確認メール設定に従い、認証前には入れない', async () => {
+  const calls = [];
+  const api = createCloudApi({ env, fetchImpl: async (url, options) => { calls.push({ url, options }); return respond({ user: { id: 'user-a' } }); } });
+  const result = await api.handle('/api/cloud/signup', 'POST', { email: 'a@example.com', password: 'fixture-password' });
+  assert.deepEqual(result, { status: 200, body: { confirmationRequired: true } });
+  assert.ok(calls[0].url.endsWith('/auth/v1/signup'));
+  assert.equal(calls[0].options.headers.apikey, 'public-test-key');
+  assert.equal(calls[0].options.headers.Authorization, undefined);
+  assert.equal((await api.handle('/api/cloud/signup', 'POST', { email: 'a@example.com', password: 'short' })).status, 400);
+  const local = storage(), statuses = [];
+  const sync = createSync({ storage: local, sessionStorage: storage(), onStatus: (value) => statuses.push(value),
+    fetchImpl: async (url) => url === '/api/cloud/config' ? respond({ configured: true }) : respond({ confirmationRequired: true }) });
+  await sync.initialize();
+  assert.deepEqual(await sync.signup('a@example.com', 'fixture-password'), { confirmationRequired: true });
+  assert.equal(sync.getUserId(), null);
+  assert.equal(local.getItem('konomi-cloud-session-v1'), null);
+  assert.equal(statuses.at(-1).signedIn, false);
+});
+
 test('デモモードは認証・履歴の外部送信を一切しない', async () => {
   const sync = createSync({ demo: true, storage: storage(), sessionStorage: storage(), fetchImpl: async () => { throw new Error('Must not request'); } });
   await sync.initialize(); sync.record('men-clean-01', 'like'); await sync.flush();

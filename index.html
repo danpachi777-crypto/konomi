@@ -6,15 +6,30 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="好きな服を左右にスワイプして、自分の好みと着こなしを見つけるアプリ" />
     <script src="local-preview.js?v=21"></script>
+    <script>window.KONOMI_AUTH_REQUIRED = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; if (window.KONOMI_AUTH_REQUIRED) document.documentElement.classList.add("auth-required");</script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles.css?v=21" />
     <link rel="stylesheet" href="ui-refresh.css?v=27" />
     <link rel="stylesheet" href="fashion-analysis.css?v=23" />
-    <link rel="stylesheet" href="minimal-theme.css?v=30" />
+    <link rel="stylesheet" href="minimal-theme.css?v=33" />
     <title>KONOMI — 好きから、似合うへ。</title>
   </head>
   <body>
+    <section id="appAuthGate" class="app-auth-gate" aria-labelledby="appAuthTitle">
+      <div class="app-auth-card">
+        <p class="eyebrow">KONOMI</p>
+        <h1 id="appAuthTitle">ログインして始める</h1>
+        <p>初回はアカウントでログインしてください。次回からはこの端末でログイン状態を保持します。</p>
+        <p id="appAuthStatus" role="status">接続を確認しています。</p>
+        <form id="appAuthForm" hidden>
+          <label>メールアドレス <input id="appAuthEmail" type="email" autocomplete="username" required></label>
+          <label>パスワード <input id="appAuthPassword" type="password" autocomplete="current-password" minlength="6" required></label>
+          <button class="primary-button" id="appLoginButton" type="submit" value="login">ログイン</button>
+          <button class="secondary-button" id="appSignupButton" type="submit" value="signup">新規登録</button>
+        </form>
+      </div>
+    </section>
     <div class="app-shell">
       <header class="topbar" id="topbar">
         <button class="brand" type="button" data-route="home" aria-label="ホームへ移動">
@@ -47,7 +62,7 @@
       <button class="dialog-close" type="button" aria-label="閉じる">×</button>
       <p class="eyebrow">ABOUT KONOMI</p>
       <h2>このサービスについて</h2>
-      <p>初回はメンズ14系統・ウィメンズ12系統から約150枚をランダムに見比べます。結果に応じて、まだ見ていない服を「あなたが好きな服」に表示します。</p>
+      <p>初回はメンズ14系統・ウィメンズ12系統から約150枚をランダムに見比べます。結果に応じて、未表示の写真を「あなたが好きな服」に追加表示します。手持ち服の写真はこの端末内に保存します。</p>
       <p>系統診断と一部の追加写真はAIで生成したイメージです。追加の実写はWebサイトやアプリでの利用が認められたPexels素材を使用しています。人物・撮影者による推奨や提携を示すものではありません。</p>
       <p>おすすめは、選んだ服ごとの配色・形・素材と、選ばなかった服やおすすめへの回答から算出します。ブランドの公式情報を案内し、写真と同じ商品や店頭在庫であるとは断定しません。口コミはGoogle Mapsから取得できた文章のみを出典付きで表示します。</p>
       <div class="dialog-links">
@@ -55,10 +70,10 @@
         <a href="PHOTO_SOURCES.md" target="_blank" rel="noopener">写真の管理方針</a>
       </div>
       <details id="cloudPanel" hidden>
-        <summary>スワイプ履歴のクラウド保存（任意）</summary>
+        <summary>アカウント・クラウド保存</summary>
         <p id="cloudStatus" role="status">接続を確認しています。</p>
         <form id="cloudLogin">
-          <p>Supabase Authに登録済みのアカウントでログインしてください。ログイン後の回答を保存します。</p>
+          <p>クラウド保存を使う場合だけ、登録済みアカウントのメールアドレスとパスワードで一度ログインしてください。次回以降はこの端末でログイン状態を保持します。</p>
           <label>メールアドレス <input id="cloudEmail" type="email" autocomplete="username" required></label>
           <label>パスワード <input id="cloudPassword" type="password" autocomplete="current-password" required></label>
           <button class="secondary-button" id="cloudLoginButton" type="submit">ログイン</button>
@@ -78,9 +93,12 @@
     <script src="shops.js?v=21"></script>
       <script src="recommendations.js?v=30"></script>
     <script src="logic.js?v=25"></script>
-    <script src="cloud-sync.js?v=21"></script>
+    <script src="cloud-sync.js?v=23"></script>
     <script src="fashion-preference.js?v=23"></script>
       <script src="diagnosis-pool.js?v=31"></script>
-      <script src="app.js?v=32"></script>
+      <script src="fresh-feed.js?v=1"></script>
+      <script src="wardrobe.js?v=1"></script>
+      <script src="feed-ui.js?v=2"></script>
+      <script src="app.js?v=35"></script>
   </body>
 </html>

@@ -102,3 +102,55 @@ input::placeholder { color: #2f8f61; opacity: 1; }
 .favorite-discovery-card span { display: block; padding: 10px 12px; color: #f7f5ed; font-size: 13px; }
 .bottom-nav button[data-route="saved"] small { font-size: 10px; white-space: nowrap; }
 @media (max-width: 600px) { .favorite-discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .favorite-discovery-card span { font-size: 11px; padding: 8px; } }
+
+/* Installed app: account sign-in before the diagnosis UI. */
+#appAuthGate { display: none; }
+.auth-required:not(.auth-unlocked) .app-shell { display: none !important; }
+.auth-required #appAuthGate { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.auth-required.auth-unlocked #appAuthGate { display: none !important; }
+.app-auth-card { width: min(100%, 420px); display: grid; gap: 18px; }
+.app-auth-card h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); }
+.app-auth-card p { margin: 0; line-height: 1.6; }
+.app-auth-card form { display: grid; gap: 14px; }
+.app-auth-card form[hidden] { display: none !important; }
+.app-auth-card label { display: grid; gap: 6px; }
+.app-auth-card input { width: 100%; padding: 14px; border: 1px solid #2f8f61; border-radius: 8px; color: #2f8f61; background: #000; }
+.app-auth-card button { width: 100%; justify-content: center; }
+
+/* Ongoing photo feed and local wardrobe. */
+.fresh-feed-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0; }
+.fresh-feed-toolbar .secondary-button { width: auto; }
+.fresh-wardrobe-filter, .wardrobe-field input, .wardrobe-field select {
+  min-height: 44px; padding: 10px 12px; border: 1px solid #2f8f61;
+  border-radius: 8px; background: #000; color: #2f8f61; font: inherit;
+}
+.fresh-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+.fresh-feed-card, .wardrobe-card, .wardrobe-form {
+  border: 1px solid #2f8f61; border-radius: 8px; background: #000;
+}
+.fresh-feed-card { overflow: hidden; }
+.fresh-feed-card > img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
+.fresh-feed-card-content { display: grid; gap: 10px; padding: 12px; border-top: 1px solid #2f8f61; }
+.fresh-feed-style { font-size: 13px; }
+.fresh-feed-actions, .fresh-feed-shops { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.fresh-feed-actions button { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+.fresh-feed-shops { padding-top: 8px; border-top: 1px solid #2f8f61; }
+.fresh-feed-shops small { flex-basis: 100%; }
+.fresh-feed-shops a { padding: 7px 10px; border: 1px solid #2f8f61; border-radius: 8px; font-size: 12px; text-decoration: none; }
+.fresh-feed-status { margin: 20px 0 12px; }
+.fresh-feed-more[hidden] { display: none !important; }
+.wardrobe-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 18px; margin: 20px 0 32px; }
+.wardrobe-field { display: grid; gap: 6px; }
+.wardrobe-form > button, .wardrobe-form > p { align-self: end; }
+.wardrobe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 16px; }
+.wardrobe-card { display: grid; gap: 8px; padding: 10px; }
+.wardrobe-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.wardrobe-card button { width: 100%; justify-content: center; }
+@media (max-width: 600px) {
+  .fresh-feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .fresh-feed-card-content { padding: 9px; }
+  .fresh-feed-actions button { flex: 1 1 100%; }
+  .wardrobe-form { grid-template-columns: 1fr; }
+}
+
+.fresh-feed-refresh[hidden] { display: none !important; }

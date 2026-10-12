@@ -143,7 +143,7 @@ realTest('新しい系統写真にembeddingがない間はスコアを捏造せ�
   assert.equal(JSON.parse(app.values.get('konomi-fashion-preference-v1')).counts.skip, 1);
 });
 
-realTest('結果・保存画面でもスコアを表示し、架空の系統％や履歴なしの固定値を出さない', () => {
+realTest('結果画面でスコアを表示し、架空の系統％や履歴なしの固定値を出さない', () => {
   const app = harness(new Map(), true);
   const item = cards.find(item => item.audience === 'men');
   app.run(`state.profileCompleted = true; state.profile.gender = 'men'; state.sessionCompleted = true;
@@ -151,9 +151,6 @@ realTest('結果・保存画面でもスコアを表示し、架空の系統％�
   assert.ok(app.html().includes('好みの分析'));
   assert.ok(app.html().includes('あなたの選択をもとにした、好みとの近さ'));
   assert.equal(/<em>\d+%<\/em>/.test(app.html()), false);
-  app.run('renderSaved()');
-  assert.ok(app.html().includes('あなたが好きな服'));
-  assert.equal(app.html().includes('診断で「好き」と答えた写真'), false);
   app.run('state.history = []; state.likedIds = []; persist(); renderResult();');
   assert.equal(app.html().includes('data-style-score='), false);
   assert.equal(app.html().includes('ニュートラル'), false);

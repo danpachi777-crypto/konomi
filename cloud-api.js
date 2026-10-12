@@ -25,7 +25,8 @@ function createCloudApi({ env = process.env, fetchImpl = fetch } = {}) {
     });
     if (!result.ok) {
       const error = new Error('Supabase request failed');
-      error.status = [401, 403].includes(result.status) ? result.status : 502;
+      error.status = [401, 403].includes(result.status) || (route.startsWith('/auth/v1/token?') && result.status === 400) ? 401
+        : route === '/auth/v1/signup' && result.status === 400 ? 400 : 502;
       throw error;
     }
     const text = await result.text();
@@ -42,6 +43,15 @@ function createCloudApi({ env = process.env, fetchImpl = fetch } = {}) {
         }
         const session = await call('/auth/v1/token?grant_type=password', { method: 'POST', body: input });
         return { status: 200, body: sessionFields(session) };
+      }
+      if (route === '/api/cloud/signup' && method === 'POST') {
+        if (typeof input.email !== 'string' || input.email.length > 254 || typeof input.password !== 'string' ||
+            input.password.length < 6 || input.password.length > 1024 || Object.keys(input).some((key) => !['email', 'password'].includes(key))) {
+          return { status: 400, body: { error: 'メールアドレスと6文字以上のパスワードを確認してください。' } };
+        }
+        const result = await call('/auth/v1/signup', { method: 'POST', body: input });
+        return { status: 200, body: result?.access_token && result?.refresh_token
+          ? sessionFields(result) : { confirmationRequired: true } };
       }
       if (route === '/api/cloud/refresh' && method === 'POST') {
         if (typeof input.refresh_token !== 'string' || !input.refresh_token || input.refresh_token.length > 4096)

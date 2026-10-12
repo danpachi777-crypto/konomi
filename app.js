@@ -18,9 +18,15 @@ const {
 } = window.KonomiLogic;
 const storageKey = "konomi-state-v5";
 // Replace the adapter for a future authenticated Supabase store; UI logic stays unchanged.
+const authUserId = () => window.konomiCloudSync?.getUserId?.() || null;
 const stateStorage = {
-  load() { return JSON.parse(localStorage.getItem(storageKey) || '{}'); },
-  save(value) { localStorage.setItem(storageKey, JSON.stringify(value)); }
+  key() {
+    if (!window.KONOMI_AUTH_REQUIRED) return storageKey;
+    const userId = authUserId();
+    return userId ? `${storageKey}:${userId}` : null;
+  },
+  load() { const key = this.key(); return key ? JSON.parse(localStorage.getItem(key) || '{}') : {}; },
+  save(value) { const key = this.key(); if (key) localStorage.setItem(key, JSON.stringify(value)); }
 };
 
 const defaultProfile = {
@@ -41,6 +47,8 @@ const defaultState = {
   recommendationCurrent: 0,
   recommendationHistory: [],
   savedRecommendationIds: [],
+  feedSeenIds: [],
+  activeWardrobeId: '',
   recommendationCompleted: false,
   recommendationQueue: [],
   recommendationReasons: {},
@@ -198,13 +206,17 @@ function fashionRankedLooks() {
 }
 
 async function initializeFashionPreference() {
-  if (!window.KonomiFashionPreference || new URLSearchParams(location.search).has('demo')) return;
+  if (!window.KonomiFashionPreference || new URLSearchParams(location.search).has('demo') ||
+      (window.KONOMI_AUTH_REQUIRED && !authUserId())) return;
+  const owner = authUserId();
   try {
     const response = await fetch('/api/fashionclip/catalog', { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     const catalog = await response.json();
     if (!response.ok || !catalog.available || !catalog.items.length) throw new Error('Local embeddings unavailable');
+    if (window.KONOMI_AUTH_REQUIRED && owner !== authUserId()) return;
     fashionPreference = window.KonomiFashionPreference.createController(catalog,
-      window.KonomiFashionPreference.createLocalStorageAdapter(localStorage));
+      window.KonomiFashionPreference.createLocalStorageAdapter(localStorage,
+        window.KONOMI_AUTH_REQUIRED ? `konomi-fashion-preference-v1:${owner}` : undefined));
     // Preserve a card already visible while asynchronous catalog loading completes.
     refreshFashionQueue(true);
     fashionPreference.update(state);
@@ -290,7 +302,8 @@ function recommendationInputs() {
 function setRoute(route) {
   if (route === "swipe" && !state.profileCompleted) route = "profile";
   if (route === "result" && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
-  if ((route === "discover" || route === "saved") && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
+  if ((route === "discover" || route === "saved" || route === "wardrobe") && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
+  if (state.route !== route && ["saved", "wardrobe"].includes(state.route)) window.KonomiFeedUI?.clearResources();
   state.route = route;
   persist();
   render();
@@ -335,6 +348,7 @@ function render() {
   if (state.route === "result") renderResult();
   if (state.route === "discover") renderDiscover();
   if (state.route === "saved") renderSaved();
+  if (state.route === "wardrobe") renderWardrobe();
   if (state.route === "analysis") renderTasteAnalysis();
 }
 
@@ -758,10 +772,10 @@ function renderResult() {
       <section class="discover-invite">
         <div>
           <p class="eyebrow">CATEGORY MATCHED LOOKS</p>
-          <h2>好きな服を分析して、次の一着を提案。</h2>
-          <p>好きと答えた服の形・配色などの共通点から、まだ回答していない別の服を選びます。提案に「着てみたい」「違う」と答えると、次のおすすめも変わります。</p>
+          <h2>好きな系統の写真を、次々に見る。</h2>
+          <p>まだ見ていない写真を順に表示します。保存した服は次のおすすめに反映されます。</p>
         </div>
-        <button class="primary-button" type="button" data-route="discover">新しいおすすめを見る <span>→</span></button>
+        <button class="primary-button" type="button" data-route="saved">新しい写真を見る <span>→</span></button>
       </section>
 
       <section class="novel-looks-section">
@@ -1248,30 +1262,11 @@ function genderLabel(value) {
 }
 
 function renderSaved() {
-  const previouslyShown = [
-    ...diagnosisCards().map(card => card.id),
-    ...state.recommendationHistory.map(entry => entry.id.replace(/^r-/, "")),
-    ...state.recommendationQueue.map(id => id.replace(/^r-/, ""))
-  ];
-  const fresh = newFavoriteLooks(cards, state.history, state.likedIds,
-    previouslyShown, state.profile.gender || 'all', 60);
-  const names = new Map(cards.filter(card => card.id.startsWith('style-'))
-    .map(card => [card.styleId, card.category]));
-  app.innerHTML = `
-    <section class="saved-screen favorite-discovery-screen">
-      <div class="page-heading"><p class="eyebrow">FOR YOU</p><h1>あなたが好きな服</h1></div>
-      <div class="favorite-discovery-grid">
-        ${fresh.map(card => `
-          <article class="favorite-discovery-card">
-            <img src="${card.image}" alt="${escapeHTML(names.get(styleOf(card)) || card.category)}の服" loading="lazy">
-            <span>${escapeHTML(names.get(styleOf(card)) || card.category)}</span>
-          </article>`).join('')}
-      </div>
-      ${!fresh.length ? '<p class="muted-copy">新しい写真を準備しています。</p>' : ''}
-      <div class="collection-actions"><button class="secondary-button" type="button" data-route="result">診断結果を見る</button></div>
-    </section>
-  `;
-  bindRouteButtons();
+  void window.KonomiFeedUI.renderFeed({ app, state, setRoute, persist });
+}
+
+function renderWardrobe() {
+  void window.KonomiFeedUI.renderWardrobe({ app, state, setRoute, persist });
 }
 
 function bindRouteButtons() {
@@ -1287,6 +1282,17 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove("is-visible"), 1900);
 }
+
+let activeAuthUserId = window.KONOMI_AUTH_REQUIRED ? authUserId() : null;
+window.addEventListener?.('konomi:auth-change', (event) => {
+  if (!window.KONOMI_AUTH_REQUIRED || event.detail.userId === activeAuthUserId) return;
+  activeAuthUserId = event.detail.userId;
+  fashionPreference = null;
+  localShops = { key: '', status: 'idle', shops: [], error: '' };
+  state = loadState();
+  if (activeAuthUserId) void initializeFashionPreference();
+  render();
+});
 
 document.querySelectorAll("header [data-route], nav [data-route]").forEach((button) => {
   button.addEventListener("click", () => setRoute(button.dataset.route));
