@@ -52,6 +52,72 @@ test('履歴なし／カタログなしでも分析へ遷移でき、0件と案�
   assert.equal(app.html().includes('%'), false);
 });
 
+test('好きそうな系統と好みの分析は好みタブにまとめ、結果から移動できる', () => {
+  const app = harness();
+  const item = cards.find(card => card.audience === 'men' && card.styleId);
+  app.run(`state.profileCompleted = true; state.sessionCompleted = true; state.profile.gender = 'men';
+    state.history = [{ id: ${JSON.stringify(item.id)}, choice: 'like' }];
+    state.likedIds = [${JSON.stringify(item.id)}]; renderResult();`);
+  assert.ok(app.html().includes('data-route="analysis"'));
+  assert.equal(app.html().includes('class="style-feed"'), false);
+  assert.equal(app.html().includes('id="tasteAnalysis"'), false);
+  app.run("setRoute('analysis')");
+  assert.ok(app.html().includes('<h2>あなたが好きそうな系統</h2>'));
+  assert.ok(app.html().includes('class="style-feed-card"'));
+  assert.ok(app.html().includes('id="tasteAnalysis"'));
+});
+
+test('診断後はマップ画面で店と地図を表示し、結果画面には地図の導線を置く', () => {
+  const app = harness();
+  const item = cards.find(card => card.styleId === 'men_amekaji');
+  app.run(`shops.push({ id: 'local-test', name: 'テスト服屋', type: '古着店', area: '下北沢', query: 'テスト服屋 下北沢',
+    tags: ['アメカジ'], features: [], description: '店舗候補', sourceLabel: '公開情報', checkedAt: '2026-10-13', sourceUrl: 'https://example.com/shop' });
+    state.profileCompleted = true; state.sessionCompleted = true; state.profile.gender = 'men'; state.profile.shoppingArea = '下北沢';
+    state.history = [{ id: ${JSON.stringify(item.id)}, choice: 'like' }];
+    state.likedIds = [${JSON.stringify(item.id)}]; renderResult();`);
+  assert.equal(app.html().includes('id="shopMap"'), false);
+  assert.ok(app.html().includes('data-route="map"'));
+  app.run("setRoute('map')");
+  assert.ok(app.html().includes('class="explore-switch"'));
+  assert.ok(app.html().includes('Picture'));
+  assert.ok(app.html().includes('Shop'));
+  assert.ok(app.html().includes('data-route="saved"'));
+  assert.ok(app.html().includes('id="shopMap"'));
+  assert.ok(app.html().includes('テスト服屋'));
+  assert.ok(app.html().includes('data-shop-style="あなた向け" aria-pressed="true"'));
+  assert.ok(app.html().includes('好きと答えた「王道アメカジ」'));
+  assert.ok(app.html().includes('data-shop-style="アメカジ"'));
+  assert.ok(app.html().includes('地図・口コミを見る'));
+  assert.equal(app.html().includes('Googleマップの店舗情報を更新'), false);
+  app.run("shopStyleFilter = 'モード'; renderMap()");
+  assert.ok(app.html().includes('この地域・条件の店舗候補はまだありません'));
+});
+
+test('探すの切り替えは写真と地図の二画面で、下部メニューは三項目にする', () => {
+  const navigation = fs.readFileSync(require.resolve('../index.html'), 'utf8');
+  const bottomNav = navigation.match(/<nav class="bottom-nav"[\s\S]*?<\/nav>/)?.[0] || '';
+  assert.equal((bottomNav.match(/data-route=/g) || []).length, 3);
+  assert.equal(bottomNav.includes('data-route="map"'), false);
+  const app = harness();
+  assert.ok(app.run("exploreSwitchHTML('saved')").includes('aria-pressed="true"'));
+  assert.ok(app.run("exploreSwitchHTML('map')").includes('data-route="map"'));
+  assert.equal(app.run("exploreSwitchHTML('saved')").includes('01'), false);
+  assert.equal(app.run("exploreSwipeRoute('saved', 240, 100, 150, 108)"), 'map');
+  assert.equal(app.run("exploreSwipeRoute('map', 100, 100, 190, 108)"), 'saved');
+  assert.equal(app.run("exploreSwipeRoute('saved', 240, 100, 150, 190)"), null);
+  const swipeResult = app.run(`(() => {
+    state.profileCompleted = true; state.sessionCompleted = true;
+    const listeners = {};
+    bindExploreSwipe({ addEventListener(type, handler) { listeners[type] = handler; } }, 'saved');
+    listeners.touchstart({ touches: [{ clientX: 240, clientY: 100 }], target: { closest() { return null; } } });
+    let prevented = false;
+    listeners.touchend({ changedTouches: [{ clientX: 150, clientY: 108 }], preventDefault() { prevented = true; } });
+    return { route: state.route, prevented };
+  })()`);
+  assert.equal(swipeResult.route, 'map');
+  assert.equal(swipeResult.prevented, true);
+});
+
 test('実履歴の最新回答を数え、タグ・カテゴリは実在するlike写真だけから集計する', () => {
   const [a, b, c] = cards;
   const state = { history: [{ id: a.id, choice: 'like' }, { id: b.id, choice: 'no' }, { id: c.id, choice: 'skip' }],
@@ -143,15 +209,16 @@ realTest('新しい系統写真にembeddingがない間はスコアを捏造せ�
   assert.equal(JSON.parse(app.values.get('konomi-fashion-preference-v1')).counts.skip, 1);
 });
 
-realTest('結果画面でスコアを表示し、架空の系統％や履歴なしの固定値を出さない', () => {
+realTest('好み画面でスコアを表示し、架空の系統％や履歴なしの固定値を出さない', () => {
   const app = harness(new Map(), true);
   const item = cards.find(item => item.audience === 'men');
   app.run(`state.profileCompleted = true; state.profile.gender = 'men'; state.sessionCompleted = true;
     state.history = [{ id: ${JSON.stringify(item.id)}, choice: 'like' }]; state.likedIds = [${JSON.stringify(item.id)}]; persist(); renderResult();`);
+  app.run("setRoute('analysis')");
   assert.ok(app.html().includes('好みの分析'));
   assert.ok(app.html().includes('あなたの選択をもとにした、好みとの近さ'));
   assert.equal(/<em>\d+%<\/em>/.test(app.html()), false);
-  app.run('state.history = []; state.likedIds = []; persist(); renderResult();');
+  app.run('state.history = []; state.likedIds = []; persist(); renderTasteAnalysis();');
   assert.equal(app.html().includes('data-style-score='), false);
   assert.equal(app.html().includes('ニュートラル'), false);
   assert.ok(app.html().includes('まだ回答はありません'));

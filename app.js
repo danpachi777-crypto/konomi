@@ -1,4 +1,6 @@
-const cards = window.KONOMI_CARDS;
+const diagnosisPool = window.KONOMI_BRAND_DIAGNOSIS_CARDS?.length
+  ? window.KONOMI_BRAND_DIAGNOSIS_CARDS : window.KONOMI_BRAND_ONLY ? [] : window.KONOMI_CARDS;
+const cards = diagnosisPool;
 const products = window.KONOMI_PRODUCTS;
 const shops = window.KONOMI_SHOPS;
 const recommendations = window.KONOMI_RECOMMENDATIONS;
@@ -6,6 +8,7 @@ const { diagnosisQueue, newFavoriteLooks, styleOf } = window.KonomiDiagnosisPool
 const {
   calculateProfile,
   rankStylePreferences,
+  rankAnsweredStyles,
   buildPreference,
   analyzeDiagnosis,
   selectDiscoveryRecommendations,
@@ -14,7 +17,8 @@ const {
   selectNovelLooks,
   filterCardsByAudience,
   selectProductRecommendations,
-  selectShopRecommendations
+  selectShopRecommendations,
+  selectPersonalShopRecommendations
 } = window.KonomiLogic;
 const storageKey = "konomi-state-v5";
 // Replace the adapter for a future authenticated Supabase store; UI logic stays unchanged.
@@ -54,7 +58,7 @@ const defaultState = {
   recommendationReasons: {},
   recommendationRound: 0,
   diagnosisIds: [],
-  diagnosisVersion: 2,
+  diagnosisVersion: 4,
   productFeedback: {},
   brandDiscovery: "all",
   occasion: "休日",
@@ -65,7 +69,11 @@ const defaultState = {
 let state = loadState();
 let fashionPreference = null;
 let toastTimer;
-let localShops = { key: "", status: "idle", shops: [], error: "" };
+const researchedShopAreas = ["下北沢", "高円寺", "原宿", "吉祥寺"];
+const shopStyleChoices = ["あなた向け", "すべて", "アメカジ", "ヴィンテージ", "ストリート", "モード", "ガーリー", "ロック", "レトロ", "ミリタリー", "ワーク", "ヨーロッパ古着", "ブランド古着", "カジュアル", "個性的"];
+let shopBrowseArea = "";
+let shopStyleFilter = "あなた向け";
+let shopVisibleCount = 8;
 
 const app = document.getElementById("app");
 const nav = document.getElementById("bottomNav");
@@ -83,32 +91,30 @@ function loadState() {
     budget: "standard"
   };
   if (demo === "profile") return { ...defaultState, route: "profile" };
+  if (demo === "brands") return { ...defaultState, route: "brands" };
   if (demo === "swipe") return { ...defaultState, route: "swipe", current: 8, profileCompleted: true, profile: demoProfile };
-  if (demo === "result") {
+  if (demo === "result" || demo === "discover" || demo === "map" || demo === "likes") {
+    const diagnosisIds = diagnosisQueue(diagnosisPool, "men");
+    const likedIds = diagnosisIds.filter((_, index) => [0, 1, 3, 5, 8, 10, 12, 15, 18, 21].includes(index));
+    const demoLooks = demo === "likes"
+      ? selectPersonalizedLooks(recommendations, diagnosisPool, likedIds, "men", 4) : [];
     return {
       ...defaultState,
-      route: "result",
-      current: cards.length,
+      route: demo === "likes" ? "discover" : demo,
+      current: diagnosisIds.length,
       sessionCompleted: true,
       profileCompleted: true,
       profile: demoProfile,
-      likedIds: [
-        "style-men_clean_casual",
-        "style-men_amekaji",
-        "style-men_preppy",
-        "men-clean-06",
-        "men-casual-07",
-        "men-amekaji-06",
-        "men-cityboy-06",
-        "men-clean-01",
-        "men-casual-02",
-        "men-street-01",
-        "men-street-02",
-        "men-korean-02",
-        "men-mode-03",
-        "men-cityboy-01",
-        "men-minimal-02"
-      ]
+      diagnosisIds,
+      likedIds,
+      history: diagnosisIds.map((id) => ({ id, choice: likedIds.includes(id) ? "like" : "skip" })),
+      ...(demo === "likes" ? {
+        recommendationRound: 1,
+        recommendationCurrent: demoLooks.length,
+        recommendationQueue: demoLooks.map((look) => look.id),
+        recommendationHistory: demoLooks.map((look) => ({ id: look.id, choice: "like", details: {} })),
+        savedRecommendationIds: demoLooks.map((look) => look.id)
+      } : {})
     };
   }
   if (demo === "gallery") {
@@ -124,17 +130,17 @@ function loadState() {
   }
   try {
     const stored = stateStorage.load();
-    if (stored.profileCompleted && stored.diagnosisVersion !== 2) {
+    if (stored.profileCompleted && stored.diagnosisVersion !== 4) {
       const profile = { ...defaultProfile, ...(stored.profile || {}) };
       return { ...defaultState, profile, profileCompleted: true, route: "swipe",
-        diagnosisIds: diagnosisQueue(cards, profile.gender || "all"),
+        diagnosisIds: diagnosisQueue(diagnosisPool, profile.gender || "all"),
         brandDiscovery: stored.brandDiscovery || "all", occasion: stored.occasion || profile.occasion };
     }
     return {
       ...defaultState,
       ...stored,
       diagnosisIds: stored.diagnosisIds || (stored.profileCompleted
-        ? diagnosisQueue(cards, stored.profile?.gender || "all") : []),
+        ? diagnosisQueue(diagnosisPool, stored.profile?.gender || "all") : []),
       profile: { ...defaultProfile, ...(stored.profile || {}) }
     };
   } catch {
@@ -169,11 +175,6 @@ function fashionSelection(candidateList, count, prefix = [], revisit = false) {
     const result = fashionPreference.select(state, [...byId.keys()], { index: history.length + slot, reserved: [...reserved] });
     let item = result.item && byId.get(result.item.id);
     let mode = result.item ? result.mode : 'unembedded-fallback';
-    // Show ranked new looks in the result feed without inventing similarity scores.
-    if (state.route === 'discover' && (prefix.length + slot) % 3 === 0) {
-      const fresh = candidateList.find(entry => entry.generatedPhoto && !reserved.has(canonical(entry.id)));
-      if (fresh) { item = fresh; mode = 'unembedded-fallback'; }
-    }
     // An incomplete catalog can offer unseen unembedded photos, but never fabricated scores.
     if (!item) {
       const embedded = new Set(fashionPreference.catalog.items.map(entry => entry.id));
@@ -202,7 +203,8 @@ function refreshFashionQueue(keepVisible = false) {
 
 function fashionRankedLooks() {
   const inputs = recommendationInputs();
-  return selectPersonalizedLooks(recommendations, inputs.cards, inputs.likedIds, state.profile.gender || 'all', recommendations.length);
+  return selectNovelLooks(recommendations, inputs.cards, inputs.likedIds,
+    state.profile.gender || 'all', [], recommendations.length);
 }
 
 async function initializeFashionPreference() {
@@ -248,7 +250,7 @@ function diagnosisCards() {
   const audience = filterCardsByAudience(cards, state.profile.gender || "all");
   const byId = new Map(audience.map(card => [card.id, card]));
   if (!state.diagnosisIds?.length) {
-    state.diagnosisIds = diagnosisQueue(cards, state.profile.gender || 'all');
+    state.diagnosisIds = diagnosisQueue(diagnosisPool, state.profile.gender || 'all');
     try { stateStorage.save(state); } catch {}
   }
   return state.diagnosisIds.map(id => byId.get(id)).filter(Boolean);
@@ -256,7 +258,7 @@ function diagnosisCards() {
 
 function initialDiagnosisCards(audience) {
   const byId = new Map(cards.map(card => [card.id, card]));
-  return diagnosisQueue(cards, audience).map(id => byId.get(id)).filter(Boolean);
+  return diagnosisQueue(diagnosisPool, audience).map(id => byId.get(id)).filter(Boolean);
 }
 
 function personalizedLooks() {
@@ -302,8 +304,8 @@ function recommendationInputs() {
 function setRoute(route) {
   if (route === "swipe" && !state.profileCompleted) route = "profile";
   if (route === "result" && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
-  if ((route === "discover" || route === "saved" || route === "wardrobe") && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
-  if (state.route !== route && ["saved", "wardrobe"].includes(state.route)) window.KonomiFeedUI?.clearResources();
+  if ((route === "discover" || route === "saved" || route === "looks" || route === "wardrobe" || route === "map") && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
+  if (state.route !== route && ["looks", "wardrobe"].includes(state.route)) window.KonomiFeedUI?.clearResources();
   state.route = route;
   persist();
   render();
@@ -321,9 +323,11 @@ function resetDiagnosis() {
   state.recommendationReasons = {};
   state.recommendationRound = 0;
   state.diagnosisIds = state.profileCompleted
-    ? diagnosisQueue(cards, state.profile.gender || "all") : [];
+    ? diagnosisQueue(diagnosisPool, state.profile.gender || "all") : [];
   state.productFeedback = {};
   state.savedRecommendationIds = [];
+  shopStyleFilter = "あなた向け";
+  shopVisibleCount = 8;
   state.route = state.profileCompleted ? "swipe" : "profile";
   persist();
   render();
@@ -336,10 +340,13 @@ function editProfile() {
 }
 
 function render() {
-  nav.hidden = ["home", "profile", "swipe"].includes(state.route);
+  nav.hidden = ["home", "profile"].includes(state.route);
   document.body.dataset.route = state.route;
   [...nav.querySelectorAll("button")].forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.route === state.route);
+    button.classList.toggle("is-active", button.dataset.route === state.route ||
+      (button.dataset.route === "swipe" && state.route === "discover") ||
+      (button.dataset.route === "saved" && ["looks", "map"].includes(state.route)) ||
+      (button.dataset.route === "result" && state.route === "brands"));
   });
 
   if (state.route === "home") renderHome();
@@ -348,15 +355,20 @@ function render() {
   if (state.route === "result") renderResult();
   if (state.route === "discover") renderDiscover();
   if (state.route === "saved") renderSaved();
+  if (state.route === "looks") renderLooks();
   if (state.route === "wardrobe") renderWardrobe();
   if (state.route === "analysis") renderTasteAnalysis();
+  if (state.route === "map") renderMap();
+  if (state.route === "brands") renderBrands();
 }
 
 function renderHome() {
   const hasProgress = state.current > 0 && !state.sessionCompleted;
   const hasResult = state.sessionCompleted;
-  const collageCards = ["gen-men-01-01", "gen-women-01-02", "gen-women-05-01"]
-    .map(id => cards.find(card => card.id === id)).filter(Boolean);
+  const collageCards = [cards.find(card => card.audience === 'men'),
+    cards.find(card => card.audience === 'women'),
+    cards.find(card => card.audience === 'women' && card.brand !== cards.find(item => item.audience === 'women')?.brand)]
+    .filter(Boolean);
   app.innerHTML = `
     <section class="home-screen">
       <div class="home-copy">
@@ -369,6 +381,7 @@ function renderHome() {
             <span aria-hidden="true">↗</span>
           </button>
           ${hasResult ? '<button class="secondary-button" type="button" data-route="result">前回の結果を見る</button>' : ""}
+          <button class="secondary-button" type="button" data-route="brands">94ブランドを系統から探す</button>
           <button class="text-button" type="button" data-route="analysis">今の好みを振り返る</button>
         </div>
         <p class="home-footnote">メンズ14系統・ウィメンズ12系統から、好みを見つける。</p>
@@ -382,7 +395,7 @@ function renderHome() {
       </div>
       <div class="home-steps">
         <article><span>01</span><div><h2>直感で、選ぶ。</h2><p>好きも、ちょっと違うも。あなたの感覚がヒント。</p></div><b aria-hidden="true">↗</b></article>
-        <article><span>02</span><div><h2>好みが、見えてくる。</h2><p>形・色・素材。選んだ服から共通点を探します。</p></div><b aria-hidden="true">↗</b></article>
+        <article><span>02</span><div><h2>好みが、見えてくる。</h2><p>選んだ服と回答から、好きな方向を探します。</p></div><b aria-hidden="true">↗</b></article>
         <article><span>03</span><div><h2>次の一着に、出会う。</h2><p>コーデやブランド、服屋へ。発見を買い物につなげよう。</p></div><b aria-hidden="true">↗</b></article>
       </div>
     </section>
@@ -414,7 +427,8 @@ function renderProfile() {
         <h1>あなたに合う服を<br>選ぶ準備。</h1>
         <p>年代や性別、よく服を着るシーンと買い物エリアを教えてください。回答はこの端末にだけ保存され、あとから変更できます。</p>
         <div class="profile-preview" aria-hidden="true">
-          ${["gen-women-02-01", "gen-men-05-02", "gen-women-07-03"].map(id => cards.find(card => card.id === id))
+          ${[cards.find(card => card.audience === 'women'), cards.find(card => card.audience === 'men'),
+            cards.find(card => card.audience === 'women' && card.styleId !== cards.find(item => item.audience === 'women')?.styleId)]
             .filter(Boolean).map((card, index) => `<img style="--i:${index}" src="${card.image}" alt="">`).join("")}
         </div>
       </div>
@@ -444,11 +458,11 @@ function renderProfile() {
             <label><input type="radio" name="gender" value="men" required ${checked(profile.gender, "men")}><span><b>メンズ</b><small>診断・結果・商品を統一</small></span></label>
             <label><input type="radio" name="gender" value="all" required ${checked(profile.gender, "all")}><span><b>両方見る</b><small>すべての服を比較</small></span></label>
           </div>
-          <p class="selection-note" id="selectionNote">選んだ方向の全身コーデだけを診断と結果に表示します。</p>
+          <p class="selection-note" id="selectionNote">選んだ方向のブランドの服を診断に表示します。</p>
         </fieldset>
 
         <div class="field-group">
-          <label for="shoppingArea">よく買い物するエリア <span>店舗・Googleマップの表示に使用します</span></label>
+          <label for="shoppingArea">よく買い物するエリア <span>プロフィールに表示します。マップの街は後から選べます</span></label>
           <input id="shoppingArea" name="shoppingArea" type="text" maxlength="40" inputmode="text" required placeholder="例：渋谷、新宿、大阪市" value="${escapeHTML(profile.shoppingArea)}">
         </div>
 
@@ -506,7 +520,7 @@ function renderProfile() {
     state.recommendationCompleted = false;
     state.recommendationQueue = [];
     state.recommendationRound = 0;
-    state.diagnosisIds = diagnosisQueue(cards, state.profile.gender);
+    state.diagnosisIds = diagnosisQueue(diagnosisPool, state.profile.gender);
     state.productFeedback = {};
     state.occasion = state.profile.occasion;
     state.route = "swipe";
@@ -517,6 +531,10 @@ function renderProfile() {
 
 function renderSwipe() {
   const activeCards = diagnosisCards();
+  if (!activeCards.length) {
+    app.innerHTML = '<section class="swipe-screen diagnosis-screen"><p role="status">ブランド写真を読み込めませんでした。通信状態を確認して再読み込みしてください。</p><button class="secondary-button" type="button" onclick="location.reload()">再読み込み</button></section>';
+    return;
+  }
   if (!state.profileCompleted) {
     setRoute("profile");
     return;
@@ -547,17 +565,12 @@ function renderSwipe() {
         <span style="width:${progress}%"></span>
       </div>
       <div class="card-stage" id="cardStage">
-        ${nextCard ? `<article class="fashion-card card-behind"><img src="${nextCard.image}" alt="" draggable="false"></article>` : ""}
-        <article class="fashion-card card-active" id="activeCard" aria-label="${card.label}">
-          <img src="${card.image}" alt="${card.label}のコーディネート" draggable="false">
+        ${nextCard ? `<article class="fashion-card card-behind"><img src="${escapeHTML(nextCard.image)}" alt="" draggable="false"></article>` : ""}
+        <article class="fashion-card card-active" id="activeCard" aria-label="診断する服の写真">
+          <img src="${escapeHTML(card.image)}" alt="服の写真" draggable="false">
           <div class="card-shade"></div>
           <div class="choice-stamp stamp-no" aria-hidden="true">NOT<br>FOR ME</div>
           <div class="choice-stamp stamp-like" aria-hidden="true">LIKE<br>THIS</div>
-          <div class="card-caption">
-            <span>LOOK ${String(state.current + 1).padStart(2, "0")}</span>
-            <h2>${escapeHTML(card.category)}</h2>
-            <p>${escapeHTML(card.label)}</p>
-          </div>
         </article>
       </div>
       ${styleScoreHTML(card.id)}
@@ -571,7 +584,7 @@ function renderSwipe() {
     </section>
   `;
 
-  app.querySelectorAll(".diagnosis-screen .swipe-heading > div, .diagnosis-screen .card-shade, .diagnosis-screen .card-caption, .diagnosis-screen .style-score, .diagnosis-screen .swipe-hint")
+  app.querySelectorAll('.diagnosis-screen .swipe-heading > div, .diagnosis-screen .card-shade, .diagnosis-screen .style-score, .diagnosis-screen .swipe-hint')
     .forEach((element) => element.remove());
   app.querySelector('[data-choice="no"]').textContent = "Dislike";
   app.querySelector('[data-choice="like"]').textContent = "Like";
@@ -624,7 +637,7 @@ function animateChoice(choice) {
   const card = document.getElementById("activeCard");
   if (!card || card.classList.contains("is-leaving")) return;
   card.classList.add("is-leaving", choice === "like" ? "leave-right" : "leave-left");
-  window.setTimeout(() => recordChoice(choice), 260);
+  window.setTimeout(() => recordChoice(choice), 160);
 }
 
 function recordChoice(choice) {
@@ -712,39 +725,180 @@ function tasteAnalysisHTML() {
   </section>`;
 }
 
+function preferredStylesHTML() {
+  const styles = rankAnsweredStyles([...cards, ...recommendations],
+    [...state.history, ...state.recommendationHistory], state.profile.gender)
+    .slice(0, 3).map((style) => ({ ...style,
+      card: cards.find((card) => card.styleId === style.id && state.likedIds.includes(card.id)) }))
+    .filter((style) => style.card);
+  return styles.length ? `<section class="style-feed"><div class="section-title"><div><p class="eyebrow">YOUR STYLE</p><h2>あなたが好きそうな系統</h2></div></div><div class="style-feed-grid">${styles.map((style) => `<article class="style-feed-card"><img src="${style.card.image}" alt="${escapeHTML(style.card.label)}" loading="lazy"><div><b>${escapeHTML(style.name)}</b><small>好き ${style.likes}/${style.answered}枚（${style.percentage}%）</small></div></article>`).join("")}</div></section>` : "";
+}
+
 function renderTasteAnalysis() {
   app.innerHTML = `<section class="result-screen taste-analysis-screen">
     <div class="page-heading"><p class="eyebrow">MY TASTE</p><h1>選んだ服から、好みを知る。</h1></div>
+    ${preferredStylesHTML()}
     ${tasteAnalysisHTML()}
     <button class="text-button" type="button" data-route="${state.sessionCompleted ? 'result' : 'home'}">${state.sessionCompleted ? '診断結果へ戻る' : 'ホームへ戻る'}</button>
   </section>`;
   bindRouteButtons();
 }
 
+function mapSectionHTML(shopRecommendations, totalCount, areaCount, likedStyles, hasLikedAnswers) {
+  return `
+      <section class="store-section">
+        <div class="store-heading">
+          <div>
+            <p class="eyebrow">NEAR YOUR STYLE</p>
+            <h2>${escapeHTML(shopBrowseArea)}のお店</h2>
+          </div>
+        </div>
+        <details class="shop-personal-basis"><summary>${likedStyles.length ? "あなた向けに並び替え中" : hasLikedAnswers ? "好みを分析中" : "診断すると、あなた向けに"}</summary><p>${likedStyles.length ? `好きと答えた系統：${likedStyles.map((style) => escapeHTML(style.name)).join("・")}。一致する掲載情報がある店を先に表示します。` : "服を選ぶほど、合う系統の店を表示しやすくなります。"}</p></details>
+        <div class="shop-filter-group" aria-label="街を選ぶ">${researchedShopAreas.map((area) => `<button type="button" data-shop-area="${area}" aria-pressed="${shopBrowseArea === area}">${area}</button>`).join("")}</div>
+        <div class="shop-filter-group shop-style-filters" aria-label="服の系統を選ぶ">${shopStyleChoices.map((style) => `<button type="button" data-shop-style="${style}" aria-pressed="${shopStyleFilter === style}">${style}</button>`).join("")}</div>
+        <p class="shop-count" role="status">${escapeHTML(shopBrowseArea)}の掲載候補 ${areaCount}店 · ${shopStyleFilter === "すべて" ? "全系統" : escapeHTML(shopStyleFilter)} ${totalCount}店${totalCount > shopRecommendations.length ? `（${shopRecommendations.length}店を表示）` : ""}</p>
+        <div class="store-layout">
+          <div class="store-list">
+            ${shopRecommendations.map((shop, index) => `
+              <article class="store-card ${index === 0 ? "is-selected" : ""}" data-store-card="${escapeHTML(shop.id)}">
+                <button type="button" data-map-shop="${escapeHTML(shop.id)}">
+                  <span class="store-number">${String(index + 1).padStart(2, "0")}</span>
+                  <span class="store-copy"><small>${escapeHTML(shop.district ? `${shopBrowseArea} ${shop.district}` : shopBrowseArea)} · ${escapeHTML(shop.type)}${shop.audiences?.length === 1 && shop.audiences[0] !== "all" ? ` · ${shop.audiences[0] === "women" ? "レディース" : "メンズ"}` : ""}</small><b>${escapeHTML(shop.name)}</b><em>${escapeHTML(shop.description)}</em></span>
+                  <span aria-hidden="true">→</span>
+                </button>
+                <div class="store-style-tags">${shop.tags.map((tag) => `<span>${escapeHTML(tag)}</span>`).join("") || '<span>系統未確認</span>'}</div>
+                <p class="store-evidence">${escapeHTML(shop.personalReason || shop.reason)}<br>${escapeHTML(shop.sourceLabel)} · ${escapeHTML(shop.checkedAt || "確認日不明")}確認 · ${shop.reviewNote ? "公開口コミを一部確認" : "口コミ未調査"}</p>
+                ${shop.reviewNote ? `<p class="store-review-note">${escapeHTML(shop.reviewNote)} <a href="${safeExternalUrl(shop.reviewSourceUrl)}" target="_blank" rel="noopener noreferrer">参考にした口コミ転載 ↗</a></p>` : ""}
+                ${shop.address ? `<p class="store-details">住所：${escapeHTML(shop.address)}</p>` : ""}
+                <div class="store-links">
+                  <a href="${escapeHTML(googleMapsSearchUrl(shop, shopBrowseArea))}" target="_blank" rel="noopener noreferrer">地図・口コミを見る ↗</a>
+                  ${shop.sourceUrl ? `<a href="${safeExternalUrl(shop.sourceUrl)}" target="_blank" rel="noopener noreferrer">掲載元を見る ↗</a>` : ""}
+                  ${shop.additionalSourceUrl ? `<a href="${safeExternalUrl(shop.additionalSourceUrl)}" target="_blank" rel="noopener noreferrer">追加取材を見る ↗</a>` : ""}
+                </div>
+              </article>`).join("")}
+            ${totalCount > shopRecommendations.length ? '<button class="secondary-button shop-more" id="showMoreShops" type="button">さらに24店を見る</button>' : ""}
+          </div>
+          <div class="map-panel">
+            ${shopRecommendations.length ? `
+            <div><span>GOOGLE MAP</span><b id="mapStoreName">${escapeHTML(shopRecommendations[0].name)}</b></div>
+            <iframe id="shopMap" title="${escapeHTML(shopBrowseArea)}の${escapeHTML(shopRecommendations[0].name)}" src="${googleMapsEmbedUrl(shopRecommendations[0], shopBrowseArea)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+            <a id="mapStoreLink" class="map-store-link" href="${escapeHTML(googleMapsSearchUrl(shopRecommendations[0], shopBrowseArea))}" target="_blank" rel="noopener noreferrer">地図・口コミを見る ↗</a>
+            ` : `<p class="shop-note">${shopStyleFilter === "あなた向け" ? likedStyles.length ? "診断で好きだった系統と一致する掲載店舗は、この街ではまだ確認できません。別の街か全系統を選んでください。" : "診断で好きな服を選ぶと、ここに合う店が表示されます。" : "この地域・条件の店舗候補はまだありません。"}</p>`}
+          </div>
+        </div>
+        <p class="shop-note">系統は掲載元の紹介から整理した目安です。一部店舗では公開されたGoogle由来の口コミ転載も参考にしました。口コミと営業状況は自動取得していません。来店前に店舗・地図の情報を確認してください。</p>
+        <a class="secondary-button map-area-link" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shopBrowseArea} 古着屋`)}" target="_blank" rel="noopener noreferrer">${escapeHTML(shopBrowseArea)}の古着屋を地図で見る ↗</a>
+      </section>
+
+  `;
+}
+
+function exploreSwitchHTML(activeRoute) {
+  return `<div class="explore-switch" role="group" aria-label="探す表示の切り替え">
+    <button type="button" data-route="saved" class="${activeRoute === "saved" ? "is-active" : ""}" aria-pressed="${activeRoute === "saved"}">Picture</button>
+    <button type="button" data-route="map" class="${activeRoute === "map" ? "is-active" : ""}" aria-pressed="${activeRoute === "map"}">Shop</button>
+  </div>`;
+}
+
+function exploreSwipeRoute(activeRoute, startX, startY, endX, endY) {
+  const dx = endX - startX;
+  const dy = endY - startY;
+  if (Math.abs(dx) < 65 || Math.abs(dx) <= Math.abs(dy) * 1.4) return null;
+  if (activeRoute === "saved" && dx < 0) return "map";
+  if (activeRoute === "map" && dx > 0) return "saved";
+  return null;
+}
+
+function bindExploreSwipe(screen, activeRoute) {
+  if (!screen) return;
+  let start = null;
+  screen.addEventListener("touchstart", (event) => {
+    if (event.touches.length !== 1 || event.target.closest?.(".map-panel, .shop-filter-group")) {
+      start = null;
+      return;
+    }
+    start = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }, { passive: true });
+  screen.addEventListener("touchend", (event) => {
+    if (!start || event.changedTouches.length !== 1) return;
+    const route = exploreSwipeRoute(activeRoute, start.x, start.y,
+      event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+    start = null;
+    if (route) {
+      event.preventDefault();
+      setRoute(route);
+    }
+  });
+  screen.addEventListener("touchcancel", () => { start = null; }, { passive: true });
+}
+
+function renderMap() {
+  const inputs = recommendationInputs();
+  const likedStyles = rankAnsweredStyles([...cards, ...recommendations],
+    [...state.history, ...state.recommendationHistory], state.profile.gender || "all")
+    .filter((style) => style.score > 0).slice(0, 3);
+  if (!researchedShopAreas.includes(shopBrowseArea)) {
+    const areaAliases = { 世田谷: "下北沢", 杉並: "高円寺", 渋谷: "原宿", 表参道: "原宿", 武蔵野: "吉祥寺" };
+    shopBrowseArea = researchedShopAreas.find((area) => state.profile.shoppingArea.includes(area)) ||
+      Object.entries(areaAliases).find(([name]) => state.profile.shoppingArea.includes(name))?.[1] || "下北沢";
+  }
+  const areaShops = shops.filter((shop) => shop.area === shopBrowseArea);
+  const rankedShops = selectShopRecommendations(areaShops, inputs.cards, inputs.likedIds,
+    areaShops.length, shopBrowseArea, "all");
+  const personalShops = selectPersonalShopRecommendations(areaShops, likedStyles,
+    state.profile.gender || "all", areaShops.length);
+  const filteredShops = shopStyleFilter === "あなた向け" ? personalShops : rankedShops
+    .filter((shop) => shopStyleFilter === "すべて" || shop.tags.includes(shopStyleFilter));
+  const shopRecommendations = filteredShops.slice(0, shopVisibleCount);
+  app.innerHTML = `<section class="result-screen map-screen">
+    <div class="page-heading"><p class="eyebrow">DISCOVER</p><h1>街で、見つける。</h1></div>
+    ${exploreSwitchHTML("map")}
+    ${mapSectionHTML(shopRecommendations, filteredShops.length, rankedShops.length, likedStyles, inputs.likedIds.length > 0)}
+  </section>`;
+  bindRouteButtons();
+  bindExploreSwipe(app.querySelector(".map-screen"), "map");
+  document.querySelectorAll("[data-shop-area]").forEach((button) => button.addEventListener("click", () => {
+    shopBrowseArea = button.dataset.shopArea;
+    shopVisibleCount = shopStyleFilter === "あなた向け" ? 8 : 24;
+    renderMap();
+  }));
+  document.querySelectorAll("[data-shop-style]").forEach((button) => button.addEventListener("click", () => {
+    shopStyleFilter = button.dataset.shopStyle;
+    shopVisibleCount = shopStyleFilter === "あなた向け" ? 8 : 24;
+    renderMap();
+  }));
+  document.getElementById("showMoreShops")?.addEventListener("click", () => {
+    shopVisibleCount += 24;
+    renderMap();
+  });
+  document.querySelectorAll("[data-map-shop]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const shop = shopRecommendations.find((item) => item.id === button.dataset.mapShop);
+      if (!shop) return;
+      document.getElementById("shopMap").src = googleMapsEmbedUrl(shop, shopBrowseArea);
+      document.getElementById("shopMap").title = `${shopBrowseArea}の${shop.name}`;
+      document.getElementById("mapStoreName").textContent = shop.name;
+      document.getElementById("mapStoreLink").href = googleMapsSearchUrl(shop, shopBrowseArea);
+      document.querySelectorAll("[data-store-card]").forEach((card) => card.classList.toggle("is-selected", card.dataset.storeCard === shop.id));
+    });
+  });
+}
+
 function renderResult() {
-  const historyAnalysis = currentTasteAnalysis();
-  const activeCards = diagnosisCards();
   const inputs = recommendationInputs();
   const tasteProfile = calculateProfile(inputs.cards, inputs.likedIds);
-  const preferredStyles = rankStylePreferences(inputs.cards, inputs.likedIds, state.profile.gender);
+  const answeredStyles = rankAnsweredStyles([...cards, ...recommendations],
+    [...state.history, ...state.recommendationHistory], state.profile.gender);
   const preference = buildPreference(inputs.cards, inputs.likedIds);
-  const personalSummary = preferredStyles.length ? preferredStyles[0].name : "好みをもう少し探そう";
-  const personalDescription = preferredStyles.length
-    ? `好きと答えた写真から、${preferredStyles.slice(0, 2).map((style) => style.name).join("・")}が好みに近いと分かりました。この系統の服を優先して提案します。`
+  const personalSummary = answeredStyles.length ? answeredStyles[0].name : "好みをもう少し探そう";
+  const personalDescription = answeredStyles.length
+    ? `好きと答えた写真から、${answeredStyles.slice(0, 2).map((style) => style.name).join("・")}が好みに近いと分かりました。この系統の服を優先して提案します。`
     : "好きと答えた服がまだ少ないため、提案は比較用の候補です。診断をやり直して気になる服を選んでみてください。";
   const analyzedLooks = personalizedLooks();
   const productPool = products.filter((product) => state.productFeedback?.[product.id] !== "no" &&
     (state.brandDiscovery !== "specialist" || product.specialist));
   const productRecommendations = selectDiscoveryRecommendations(productPool, inputs.cards, inputs.likedIds, state.profile.gender, state.profile.budget, state.productFeedback, 6);
-  const shopKey = JSON.stringify([state.profile.shoppingArea, state.profile.gender, state.likedIds]);
-  if (localShops.key !== shopKey) localShops = { key: shopKey, status: "idle", shops: [], error: "" };
-  const shopPool = localShops.shops.length ? [...shops.filter((shop) => shop.areas), ...localShops.shops] : shops;
-  const shopRecommendations = selectShopRecommendations(shopPool, inputs.cards, inputs.likedIds, 6, state.profile.shoppingArea, state.profile.gender);
-  const tags = historyAnalysis ? historyAnalysis.tags.map(item => ({ tag: item.label, count: item.count })) : tasteProfile.topTags;
-  const categoryCounts = preferredStyles.map((style) => ({ label: style.name, count: style.likes }));
-  const styleFeed = preferredStyles.slice(0, 3).map((style) => ({ ...style,
-    card: cards.find((card) => card.id === `style-${style.id}`) }));
-
+  const tags = tasteProfile.topTags;
   app.innerHTML = `
     <section class="result-screen">
       <div class="result-quick-actions"><button type="button" id="quickRestartButton">最初から診断する</button></div>
@@ -757,8 +911,9 @@ function renderResult() {
           ${preference.photoColorSummary.length ? `<p class="shop-note">選んだ写真に多い色：${escapeHTML(preference.photoColorSummary.join("・"))}。写真中央の色を比較して提案の参考にしています。背景や肌の色も含む目安です。</p>` : ""}
           <div class="tag-row">${tags.slice(0, 3).map((item) => `<span># ${item.tag}</span>`).join("")}</div>
           <div class="style-type-row">
-            ${categoryCounts.slice(0, 3).map((item, index) => `<div><span>0${index + 1}</span><b>${escapeHTML(item.label)}</b><em>${item.count}件のlike</em></div>`).join("")}
+            ${answeredStyles.slice(0, 3).map((item, index) => `<div><span>0${index + 1}</span><b>${escapeHTML(item.name)}</b><em>好き ${item.likes}/${item.answered}枚（${item.percentage}%）</em></div>`).join("")}
           </div>
+          ${answeredStyles.length ? '<p class="shop-note">各系統で判断した写真のうち、好きと答えた割合です。保留は含めません。</p>' : ''}
         </div>
         <div class="result-photo-stack" aria-label="診断から分析したおすすめコーデ">
           ${analyzedLooks.slice(0, 3).map((look, index) => `<img style="--i:${index}" src="${look.image}" alt="${look.label}">`).join("")}
@@ -767,15 +922,14 @@ function renderResult() {
       </div>
 
       ${diagnosisAnalysisHTML(inputs)}
-      ${tasteAnalysisHTML()}
-      ${styleFeed.length ? `<section class="style-feed"><div class="section-title"><div><p class="eyebrow">YOUR STYLE</p><h2>あなたが好きそうな系統</h2></div></div><div class="style-feed-grid">${styleFeed.map((style) => `<article class="style-feed-card"><img src="${style.card.image}" alt="${escapeHTML(style.card.label)}" loading="lazy"><div><b>${escapeHTML(style.name)}</b><small>好き ${style.likes}件</small></div></article>`).join("")}</div></section>` : ""}
+      <button class="secondary-button" type="button" data-route="analysis">あなたが好きそうな系統・好みを見る <span aria-hidden="true">→</span></button>
       <section class="discover-invite">
         <div>
           <p class="eyebrow">CATEGORY MATCHED LOOKS</p>
           <h2>好きな系統の写真を、次々に見る。</h2>
           <p>まだ見ていない写真を順に表示します。保存した服は次のおすすめに反映されます。</p>
         </div>
-        <button class="primary-button" type="button" data-route="saved">新しい写真を見る <span>→</span></button>
+        <button class="primary-button" type="button" data-route="saved">好みに合うブランド写真を見る <span>→</span></button>
       </section>
 
       <section class="novel-looks-section">
@@ -807,16 +961,17 @@ function renderResult() {
       <div class="result-grid">
         <section class="result-panel taste-panel">
           <div class="section-title">
-            <div><p class="eyebrow">TASTE BALANCE</p><h2>選んだ雰囲気</h2></div>
-            <span>初回 ${activeCards.length}枚 · 追加 ${state.recommendationHistory.length}枚</span>
+            <div><p class="eyebrow">YOUR CHOICES</p><h2>好きな服に多い特徴</h2></div>
+            <span>好きと答えた服 ${preference.likedCards.length}枚</span>
           </div>
           <div class="meter-list">
             ${tags.slice(0, 4).map((item) => `
               <div class="meter-item">
-                <div><span>${escapeHTML(item.tag)}</span><b>${item.count}件のlike</b></div>
+                <div><span>${escapeHTML(item.tag)}</span><b>${item.count}枚</b></div>
               </div>`).join("")}
-            ${!tags.length ? '<p class="muted-copy">いいねした服の特徴は、選択が増えるとここに表示されます。</p>' : ''}
+            ${!tags.length ? '<p class="muted-copy">好きと答えた服が増えると、その写真に付いた特徴を表示します。</p>' : ''}
           </div>
+          ${tags.length ? '<p class="shop-note">選んだ写真に付いたタグを数えています。好みの割合ではありません。</p>' : ''}
         </section>
 
         <section class="result-panel recipe-panel">
@@ -859,44 +1014,10 @@ function renderResult() {
             </article>`).join("")}
         </div>
         <p class="shop-note">ブランド／取り扱い一覧への案内です。写真の服と同じ商品であることや、在庫・価格を保証するものではありません。</p>
+        <button class="secondary-button brand-directory-entry" type="button" data-route="brands">26系統・94ブランドをすべて見る <span aria-hidden="true">↗</span></button>
       </section>
 
-      <section class="store-section">
-        <div class="store-heading">
-          <div>
-            <p class="eyebrow">SHOPS NEAR YOU</p>
-            <h2>${escapeHTML(state.profile.shoppingArea)}で、服を探す。</h2>
-            <p>公式の取り扱いを参考にした店舗・ブランド候補です。地域の服屋を口コミから調べることもできます。</p>
-            <button class="secondary-button" type="button" id="searchLocalShops" ${localShops.status === "loading" ? "disabled" : ""}>${localShops.status === "loading" ? "近くの服屋を調べています…" : "近くの服屋を口コミから調べる"}</button>
-            <p class="shop-note" role="status">${localShopStatusText()}</p>
-          </div>
-        </div>
-        <div class="store-layout">
-          <div class="store-list">
-            ${shopRecommendations.map((shop, index) => `
-              <article class="store-card ${index === 0 ? "is-selected" : ""}" data-store-card="${shop.id}">
-                <button type="button" data-map-shop="${shop.id}">
-                  <span class="store-number">${String(index + 1).padStart(2, "0")}</span>
-                  <span class="store-copy"><small>${escapeHTML(shop.type)}</small><b>${escapeHTML(shop.name)}</b><em>${escapeHTML(shop.description)}</em></span>
-                  <span aria-hidden="true">→</span>
-                </button>
-                <p class="store-evidence">${escapeHTML(shop.reason)}<br>${escapeHTML(shop.sourceLabel)}${shop.reviewStatus === "fetched" ? ` · Google Maps ${shop.rating ?? "評価なし"} / ${shop.reviewCount ?? 0}件（分析は取得できた${shop.reviews.length}件）` : " · 口コミ未取得"}</p>
-                ${shop.reviews?.length ? `<details class="store-reviews"><summary>判断に使える口コミの原文・出典</summary>${shop.reviews.map((review) => `<blockquote><p>${escapeHTML(review.text)}</p><a href="${safeExternalUrl(review.authorUri)}" target="_blank" rel="noopener noreferrer">${escapeHTML(review.author)}</a> · <a href="${safeExternalUrl(review.url)}" target="_blank" rel="noopener noreferrer">Google Mapsで読む</a></blockquote>`).join("")}</details>` : ""}
-                <div class="store-links">
-                  <a href="${googleMapsSearchUrl(shop, state.profile.shoppingArea)}" target="_blank" rel="noopener noreferrer">Googleマップで開く ↗</a>
-                  ${shop.officialUrl ? `<a href="${safeExternalUrl(shop.officialUrl)}" target="_blank" rel="noopener noreferrer">公式の取り扱い・店舗情報 ↗</a>` : ""}
-                </div>
-              </article>`).join("")}
-          </div>
-          <div class="map-panel">
-            ${shopRecommendations.length ? `
-            <div><span>GOOGLE MAP</span><b id="mapStoreName">${escapeHTML(shopRecommendations[0].name)}</b></div>
-            <iframe id="shopMap" title="${escapeHTML(state.profile.shoppingArea)}周辺の${escapeHTML(shopRecommendations[0].name)}" src="${googleMapsEmbedUrl(shopRecommendations[0], state.profile.shoppingArea)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-            ` : '<p class="shop-note">この地域・条件の店舗候補はまだありません。</p>'}
-          </div>
-        </div>
-        <p class="shop-note">店舗名のないブランド候補は地図で最寄りの店舗を探すための案内です。口コミの言及は現在の店頭在庫と異なる場合があります。来店前に公式情報でご確認ください。</p>
-      </section>
+      <button class="secondary-button" type="button" data-route="map">近くの服屋・古着屋をマップで見る <span aria-hidden="true">→</span></button>
 
       <section class="recommend-section">
         <div class="section-title">
@@ -922,7 +1043,6 @@ function renderResult() {
     });
   });
   bindRouteButtons();
-  document.getElementById("searchLocalShops").addEventListener("click", searchLocalShops);
   document.getElementById("brandDiscovery").addEventListener("change", (event) => {
     state.brandDiscovery = event.target.value;
     persist();
@@ -941,19 +1061,8 @@ function renderResult() {
   document.getElementById("restartButton").addEventListener("click", resetDiagnosis);
   document.getElementById("quickRestartButton").addEventListener("click", resetDiagnosis);
   document.getElementById("editProfileButton").addEventListener("click", editProfile);
-  document.querySelectorAll("[data-map-shop]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const shop = shopRecommendations.find((item) => item.id === button.dataset.mapShop);
-      if (!shop) return;
-      document.getElementById("shopMap").src = googleMapsEmbedUrl(shop, state.profile.shoppingArea);
-      document.getElementById("shopMap").title = `${state.profile.shoppingArea}周辺の${shop.name}`;
-      document.getElementById("mapStoreName").textContent = shop.name;
-      document.querySelectorAll("[data-store-card]").forEach((card) => card.classList.toggle("is-selected", card.dataset.storeCard === shop.id));
-    });
-  });
   app.querySelectorAll([
-    ".result-hero .result-copy > p:not(.eyebrow)", ".result-hero .tag-row",
-    ".result-hero .style-type-row", ".result-photo-stack > span",
+    ".result-hero .tag-row", ".result-photo-stack > span",
     ".result-screen > .diagnosis-analysis", ".discover-invite p",
     ".novel-looks-section > .shop-note", ".novel-look-copy > h3",
     ".novel-look-copy > p", ".novel-look-copy .style-score",
@@ -979,13 +1088,24 @@ function recordSuggestedLook(id, choice) {
 }
 
 function renderDiscover() {
-  if (!state.recommendationRound) startRefinementRound(false, false);
-  const looks = currentRoundLooks();
-  const tasteProfile = calculateProfile(diagnosisCards(), state.likedIds);
   if (!state.sessionCompleted) {
     setRoute("swipe");
     return;
   }
+  const inputs = recommendationInputs();
+  if (!buildPreference(inputs.cards, inputs.likedIds).likedCards.length) {
+    app.innerHTML = `<section class="discover-complete discover-empty">
+      <div class="complete-copy"><p class="eyebrow">FOR YOU</p>
+        <h1>おすすめの手がかりを、<br>もう少し教えてください。</h1>
+        <p>まだ「好き」と答えた服がありません。服を選ぶと、共通する系統や特徴からおすすめを探せます。</p>
+        <button class="primary-button" type="button" id="restartDiagnosisFromDiscover">診断で服を選ぶ <span>→</span></button>
+      </div></section>`;
+    document.getElementById("restartDiagnosisFromDiscover").addEventListener("click", resetDiagnosis);
+    return;
+  }
+  if (!state.recommendationRound) startRefinementRound(false, false);
+  const looks = currentRoundLooks();
+  const tasteProfile = calculateProfile(diagnosisCards(), state.likedIds);
   if (state.recommendationCurrent >= looks.length) {
     state.recommendationCompleted = true;
     persist();
@@ -996,14 +1116,18 @@ function renderDiscover() {
   const look = looks[state.recommendationCurrent];
   const nextLook = looks[state.recommendationCurrent + 1];
   const progress = Math.round((state.recommendationCurrent / looks.length) * 100);
-  const reasons = look.matches.length ? look.matches : look.tags.slice(0, 3);
+  const reasons = look.matches;
+  const evidence = look.evidenceIds.map((id) => inputs.cards.find((card) => card.id === id))
+    .filter(Boolean).map((card) => card.brand || card.category || card.label || card.name).filter(Boolean);
+  const preferredStyles = rankStylePreferences(inputs.cards, inputs.likedIds, state.profile.gender || "all");
+  const matchedStyle = preferredStyles.find((style) => style.id === look.styleId);
 
   app.innerHTML = `
     <section class="swipe-screen discover-screen">
       <div class="swipe-shortcuts"><button class="restart-diagnosis" type="button" id="restartDiagnosisFromDiscover">最初から</button><button class="restart-diagnosis" type="button" data-route="result">結果を見る</button></div>
       <div class="swipe-heading">
         <div>
-          <p class="eyebrow">あなたへの提案 ROUND ${state.recommendationRound} · ${escapeHTML(state.profile.nickname)}</p>
+          <p class="eyebrow">YOUR PICKS</p>
           <h1>こういう服は、どう？</h1>
         </div>
         <span class="counter"><b>${String(state.recommendationCurrent + 1).padStart(2, "0")}</b> / ${looks.length}</span>
@@ -1011,7 +1135,12 @@ function renderDiscover() {
       <div class="progress-track" role="progressbar" aria-label="おすすめコーデの進捗" aria-valuenow="${state.recommendationCurrent}" aria-valuemin="0" aria-valuemax="${looks.length}">
         <span style="width:${progress}%"></span>
       </div>
-      <p class="analysis-note">${escapeHTML(state.recommendationReasons?.[look.id] || look.reason)}<br>共通する特徴：${reasons.map((tag) => `#${tag}`).join(" · ")}</p>
+      <div class="recommendation-basis">
+        <b>診断結果から選びました</b>
+        <p>${escapeHTML(matchedStyle ? `診断で「${matchedStyle.name}」を${matchedStyle.likes}枚選択。この写真も同じ系統です。` : look.reason)}</p>
+        ${evidence.length ? `<small>根拠にした好きな写真：${[...new Set(evidence)].slice(0, 2).map(escapeHTML).join("・")}</small>` : ""}
+        ${reasons.length ? `<div class="recommendation-basis-tags">${reasons.slice(0, 3).map((tag) => `<span>${escapeHTML(tag)}</span>`).join("")}</div>` : ""}
+      </div>
       <div class="card-stage recommendation-stage">
         ${nextLook ? `<article class="fashion-card card-behind"><img src="${nextLook.image}" alt="" draggable="false"></article>` : ""}
         <article class="fashion-card card-active recommendation-card-active" id="recommendationCard" aria-label="${look.label}">
@@ -1020,7 +1149,7 @@ function renderDiscover() {
           <div class="choice-stamp stamp-no" aria-hidden="true">SKIP</div>
           <div class="choice-stamp stamp-like" aria-hidden="true">SAVE</div>
           <div class="card-caption recommendation-caption">
-            <span>追加診断 ${String(state.recommendationCurrent + 1).padStart(2, "0")}</span>
+            <span>PICK ${String(state.recommendationCurrent + 1).padStart(2, "0")}</span>
             <h2>${look.label}</h2>
             <p>${look.summary}</p>
           </div>
@@ -1044,7 +1173,7 @@ function renderDiscover() {
     </section>
   `;
 
-  app.querySelectorAll(".discover-screen .swipe-heading > div, .discover-screen .analysis-note, .discover-screen .card-shade, .discover-screen .card-caption, .discover-screen .style-score, .discover-screen .swipe-hint, .discover-screen .refinement-details")
+  app.querySelectorAll(".discover-screen .swipe-heading > div, .discover-screen .card-shade, .discover-screen .style-score, .discover-screen .swipe-hint, .discover-screen .refinement-details")
     .forEach((element) => element.remove());
   app.querySelector('[data-recommendation-choice="no"]').textContent = "Dislike";
   app.querySelector('[data-recommendation-choice="like"]').textContent = "Like";
@@ -1084,39 +1213,109 @@ function startRefinementRound(revisit = false, shouldRender = true) {
   if (shouldRender) render();
 }
 
-function renderDiscoverComplete(looks, tasteProfile) {
-  const saved = recommendations.filter((look) => state.savedRecommendationIds.includes(look.id));
-  const inputs = recommendationInputs();
-  const signals = buildPreference(inputs.cards, inputs.likedIds).signals;
-  const remaining = nextRefinementCandidates().length;
-  app.innerHTML = `
-    <section class="discover-complete">
-      <div class="complete-copy">
-        <p class="eyebrow">${looks.length ? `追加診断 ROUND ${state.recommendationRound} 完了` : "現在の未回答写真はありません"}</p>
-        <h1>回答から、<br>好みを更新しました。</h1>
-        <p>これまで追加で${state.recommendationHistory.length}枚に回答。今の共通点は「${signals.join("・") || "もう少し比較したい"}」。${remaining ? "次はこの好みをもとに、別の服を提案します。" : "今の好みに近い未回答の写真候補がありません。新しい提案を増やすには写真候補の拡充が必要です。比較し直す場合は、過去の写真も含まれます。"} </p>
-        <div class="complete-actions">
-          <button class="primary-button" type="button" id="nextRefinementRound">${remaining ? "分析した好みで、別の服を提案" : "過去の写真を比較し直す"} <span>→</span></button>
-          <button class="secondary-button" type="button" data-route="result">更新した結果・ブランドを見る</button>
-          <button class="text-button" type="button" data-route="saved">お気に入りを見る</button>
-        </div>
-      </div>
-      <div class="complete-collage" aria-label="保存したおすすめコーデ">
-        ${(saved.length ? saved : looks.slice(0, 4)).slice(0, 4).map((look, index) => `<img style="--i:${index}" src="${look.image}" alt="${look.label}">`).join("")}
-      </div>
-    </section>
-    ${diagnosisAnalysisHTML(inputs)}
-    <section class="round-discoveries"><h2>この診断から、新しく見てほしい服。</h2><div class="product-grid">
-      ${selectDiscoveryRecommendations(products, inputs.cards, inputs.likedIds, state.profile.gender, state.profile.budget, state.productFeedback, 3).map((product) => `<article class="product-card"><div class="product-meta">${escapeHTML(product.brand)}</div><h3>${escapeHTML(product.name)}</h3><p>${escapeHTML(product.discoveryReason)}</p><p class="discovery-experiment">${escapeHTML(product.experiment)}</p><a href="${safeExternalUrl(product.url)}" target="_blank" rel="noopener noreferrer">この服の方向を公式で見比べる ↗</a><div class="recommendation-feedback"><button type="button" data-round-product="${product.id}" data-choice="like">気になる</button><button type="button" data-round-product="${product.id}" data-choice="no">好みと違う</button></div></article>`).join("") || '<p class="shop-note">好みとの共通点が確認できる候補はまだありません。気になる部分を回答すると、提案を絞れます。</p>'}
-    </div><p class="shop-note">公式の取り扱い一覧への案内です。写真と同じ服や在庫・価格の確認ではありません。</p></section>
-  `;
-  document.querySelectorAll("[data-round-product]").forEach((button) => button.addEventListener("click", () => {
+function roundProductIdeaPhotos(chosenProducts, excludedImages = [], photoPool = recommendations) {
+  const audience = state.profile.gender || "all";
+  const excluded = new Set(excludedImages);
+  const used = new Set();
+  const pool = photoPool.filter((look) => look.image &&
+    (audience === "all" || look.audience === audience || look.audience === "all"));
+  return chosenProducts.map((product) => {
+    const available = pool.filter((look) => look.brand === product.brand && !used.has(look.image));
+    const fresh = available.filter((look) => !excluded.has(look.image));
+    const options = fresh.length ? fresh : available;
+    const photo = options.map((look) => {
+      const terms = [...(product.tags || []), ...(product.features || []), ...(product.matches || [])];
+      const matches = terms.filter((term) => (look.tags || []).includes(term) ||
+        (look.features || []).includes(term) || look.category === term ||
+        (look.title || "").includes(term)).length;
+      return { look, score: matches };
+    }).sort((a, b) => b.score - a.score)[0]?.look;
+    if (photo) used.add(photo.image);
+    return { product, photo };
+  });
+}
+
+function roundCatalogPhotos(catalog) {
+  return (catalog.sources || []).flatMap((source) => (source.photos || [])
+    .filter((photo) => photo.image?.startsWith("https://") && photo.url?.startsWith("https://"))
+    .map((photo) => {
+      const audience = window.KonomiPhotoAudience?.audienceFor(photo, source) || null;
+      // YAECA's catalog images are garments on a plain background; no model audience is implied.
+      const neutralGarment = source.brand === "YAECA" && photo.sourceType === "product" &&
+        photo.personVerified !== true;
+      if (!audience && !neutralGarment) return null;
+      if (photo.sourceType !== "product" && photo.personVerified !== true) return null;
+      return { image: photo.image, sourceUrl: photo.url, brand: source.brand,
+        title: photo.title, audience: audience || "all" };
+    }).filter(Boolean));
+}
+
+function roundProductCardsHTML(productIdeas) {
+  return productIdeas.map(({ product, photo }) => `<article class="round-product-card">
+    <a class="round-product-photo" href="${safeExternalUrl(photo.sourceUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeHTML(photo.brand)}の参考写真の掲載元を見る"><img src="${escapeHTML(photo.image)}" alt="${escapeHTML(photo.brand)}の服の参考写真" loading="lazy"><span>STYLE IDEA</span></a>
+    <div class="round-product-copy"><span class="round-product-brand">${escapeHTML(product.brand)}</span><h3>${escapeHTML(product.name.replace(/を(?:探す|比較)$/, ""))}</h3>
+      <div class="round-product-tags">${product.matches.slice(0, 2).map((match) => `<span>${escapeHTML(match)}</span>`).join("")}</div>
+      <a class="round-product-shop" href="${safeExternalUrl(product.url)}" target="_blank" rel="noopener noreferrer">公式で探す <span aria-hidden="true">↗</span></a>
+      <div class="round-product-feedback"><button type="button" data-round-product="${escapeHTML(product.id)}" data-choice="like">気になる</button><button type="button" data-round-product="${escapeHTML(product.id)}" data-choice="no">ちがう</button></div>
+    </div></article>`).join("");
+}
+
+function bindRoundProductFeedback(container) {
+  container.querySelectorAll("[data-round-product]").forEach((button) => button.addEventListener("click", () => {
     state.productFeedback ||= {};
     state.productFeedback[button.dataset.roundProduct] = button.dataset.choice;
     persist();
     renderDiscover();
     showToast("興味のある方向を次の提案に反映しました");
   }));
+}
+
+function renderDiscoverComplete(looks, tasteProfile) {
+  const saved = recommendations.filter((look) => state.savedRecommendationIds.includes(look.id));
+  const inputs = recommendationInputs();
+  const signals = buildPreference(inputs.cards, inputs.likedIds).signals;
+  const remaining = nextRefinementCandidates().length;
+  const collageLooks = [...saved, ...looks.filter((look) => !saved.some((item) => item.id === look.id))].slice(0, 4);
+  const seenImages = [...diagnosisCards(), ...state.recommendationHistory.map((entry) =>
+    recommendations.find((look) => look.id === entry.id)), ...collageLooks].filter(Boolean).map((look) => look.image);
+  const roundProducts = selectDiscoveryRecommendations(products, inputs.cards, inputs.likedIds,
+    state.profile.gender, state.profile.budget, state.productFeedback, products.length);
+  const productIdeas = roundProductIdeaPhotos(roundProducts, seenImages)
+    .filter(({ photo }) => photo).slice(0, 3);
+  app.innerHTML = `
+    <section class="discover-complete discover-likes">
+      <div class="complete-copy">
+        <p class="eyebrow">THE EDIT</p>
+        <h1>Your Likes<span class="complete-title-dot">.</span></h1>
+        ${signals.length ? `<div class="complete-signals" aria-label="好きな服の共通点">${signals.slice(0, 3).map((signal) => `<span>${escapeHTML(signal)}</span>`).join("")}</div>` : ""}
+        <div class="complete-actions">
+          <button class="primary-button" type="button" id="nextRefinementRound">${remaining ? "次の服を見る" : "もう一度見る"} <span>→</span></button>
+          <button class="secondary-button" type="button" data-route="result">結果を見る</button>
+        </div>
+      </div>
+      <div class="complete-collage" aria-label="今回見た服">
+        ${collageLooks.map((look, index) => `<img style="--i:${index}" src="${look.image}" alt="${escapeHTML(look.label)}">`).join("")}
+      </div>
+    </section>
+    ${diagnosisAnalysisHTML(inputs)}
+    <section class="round-discoveries"><div class="round-discoveries-heading"><div><p class="eyebrow">NEW FINDS</p><h2>次に見たい服</h2></div><small>写真は参考</small></div><div class="round-product-grid">
+      ${roundProductCardsHTML(productIdeas) || (window.KonomiBrandFeed?.loadCatalog ? '<p class="shop-note">写真を読み込み中…</p>' : '<p class="shop-note">まだ候補がありません。好きな服をもう少し選んでください。</p>')}
+    </div></section>
+  `;
+  const productGrid = app.querySelector(".round-product-grid");
+  bindRoundProductFeedback(productGrid);
+  if (window.KonomiBrandFeed?.loadCatalog) window.KonomiBrandFeed.loadCatalog().then((catalog) => {
+    if (state.route !== "discover" || !app.contains(productGrid)) return;
+    const catalogIdeas = roundProductIdeaPhotos(roundProducts, seenImages, roundCatalogPhotos(catalog))
+      .filter(({ photo }) => photo).slice(0, 3);
+    if (catalogIdeas.length) {
+      productGrid.innerHTML = roundProductCardsHTML(catalogIdeas);
+      bindRoundProductFeedback(productGrid);
+    } else if (!productIdeas.length) productGrid.innerHTML = '<p class="shop-note">まだ候補がありません。好きな服をもう少し選んでください。</p>';
+  }).catch(() => {
+    if (state.route === "discover" && app.contains(productGrid) && !productIdeas.length)
+      productGrid.innerHTML = '<p class="shop-note">写真を読み込めませんでした。再読み込みしてください。</p>';
+  });
   document.getElementById("nextRefinementRound").addEventListener("click", () => startRefinementRound(!remaining));
   bindRouteButtons();
 }
@@ -1159,7 +1358,7 @@ function animateRecommendationChoice(choice) {
   const card = document.getElementById("recommendationCard");
   if (!card || card.classList.contains("is-leaving")) return;
   card.classList.add("is-leaving", choice === "like" ? "leave-right" : "leave-left");
-  window.setTimeout(() => recordRecommendationChoice(choice), 260);
+  window.setTimeout(() => recordRecommendationChoice(choice), 160);
 }
 
 function recordRecommendationChoice(choice) {
@@ -1209,48 +1408,16 @@ function googleMapsEmbedUrl(shop, area) {
 }
 
 function googleMapsSearchUrl(shop, area) {
-  return shop.mapsUrl ? safeExternalUrl(shop.mapsUrl) : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(googleMapsQuery(shop, area))}`;
+  if (shop.mapsUrl) {
+    try { const url = new URL(shop.mapsUrl); return url.protocol === "https:" ? url.href : "#"; }
+    catch { return "#"; }
+  }
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(googleMapsQuery(shop, area))}`;
 }
 
 function safeExternalUrl(value) {
   try { const url = new URL(value); return url.protocol === "https:" ? escapeHTML(url.href) : "#"; }
   catch { return "#"; }
-}
-
-function localShopStatusText() {
-  const messages = {
-    idle: "現在は公式情報からの候補です。地域の店舗・口コミは検索後に表示します。",
-    loading: "Google Mapsの店舗情報と取得できた口コミを確認しています。",
-    unconfigured: "口コミ検索は未接続です。現在の候補は公式情報を参考にしています。",
-    ready: "Google Mapsの取得できた口コミから服の特徴を調べ、選んだ服との共通点で並べています。",
-    empty: "地域の店舗を取得できませんでした。エリア名を具体的にして再検索してください。",
-    error: localShops.error
-  };
-  return escapeHTML(messages[localShops.status] || messages.idle);
-}
-
-async function searchLocalShops() {
-  const key = localShops.key;
-  localShops.status = "loading";
-  renderResult();
-  try {
-    const inputs = recommendationInputs();
-    const signals = buildPreference(inputs.cards, inputs.likedIds).signals;
-    const response = await fetch("/api/shops/search", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ area: state.profile.shoppingArea, signals }),
-      signal: AbortSignal.timeout(30000)
-    });
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.error || "店舗情報を取得できませんでした。");
-    if (localShops.key !== key) return;
-    localShops = { key, status: result.status, shops: result.shops || [], error: "" };
-  } catch (error) {
-    if (localShops.key !== key) return;
-    localShops.status = "error";
-    localShops.error = error.name === "TimeoutError" ? "検索が時間切れになりました。もう一度お試しください。" : error.message;
-  }
-  if (state.route === "result") renderResult();
 }
 
 function ageLabel(value) {
@@ -1262,11 +1429,80 @@ function genderLabel(value) {
 }
 
 function renderSaved() {
+  const inputs = recommendationInputs();
+  const styles = rankStylePreferences(inputs.cards, inputs.likedIds, state.profile.gender || 'all');
+  const seenImages = diagnosisCards().map((card) => card.image);
+  window.KonomiBrandFeed.render({ app, state, styles, seenImages, setRoute,
+    exploreSwitcherHTML: exploreSwitchHTML("saved") });
+  bindExploreSwipe(app.querySelector(".brand-feed-screen"), "saved");
+}
+
+function renderLooks() {
   void window.KonomiFeedUI.renderFeed({ app, state, setRoute, persist });
 }
 
 function renderWardrobe() {
   void window.KonomiFeedUI.renderWardrobe({ app, state, setRoute, persist });
+}
+
+function renderBrands() {
+  const directory = window.KONOMI_BRAND_DIRECTORY;
+  if (!directory) {
+    app.innerHTML = '<p class="brand-directory-unavailable">ブランド一覧を読み込めませんでした。再読み込みしてください。</p>';
+    return;
+  }
+  app.innerHTML = `
+    <section class="brand-directory-screen">
+      <header class="brand-directory-header">
+        <p class="eyebrow">THE BRAND DIRECTORY</p>
+        <h1>好きな系統から、<br>ブランドを探す。</h1>
+        <p>メンズ14系統・ウィメンズ12系統。${directory.countBrands()}ブランドを、服の方向ごとにまとめました。複数の系統に合うブランドは、それぞれに掲載しています。</p>
+        <small>系統との組み合わせは編集上の目安です。診断による個別のおすすめ順位ではありません。</small>
+      </header>
+      <div class="brand-directory-controls">
+        <label>対象
+          <select id="brandAudience"><option value="all">すべて</option><option value="men">メンズ</option><option value="women">ウィメンズ</option></select>
+        </label>
+        <label>系統
+          <select id="brandStyle"><option value="all">すべての系統</option>${directory.groups.map((group) => `<option value="${escapeHTML(group.styleId)}">${group.audience === "men" ? "メンズ" : "ウィメンズ"} · ${escapeHTML(group.style)}</option>`).join("")}</select>
+        </label>
+        <label>ブランドを検索
+          <input id="brandSearch" type="search" placeholder="例：COS、ミリタリー" autocomplete="off">
+        </label>
+      </div>
+      <p id="brandDirectoryCount" class="brand-directory-count" role="status"></p>
+      <div id="brandDirectoryList" class="brand-directory-list"></div>
+    </section>`;
+
+  const audienceSelect = document.getElementById("brandAudience");
+  const styleSelect = document.getElementById("brandStyle");
+  const searchInput = document.getElementById("brandSearch");
+  const list = document.getElementById("brandDirectoryList");
+  const count = document.getElementById("brandDirectoryCount");
+  function updateList() {
+    const visible = directory.filter({ audience: audienceSelect.value, styleId: styleSelect.value, query: searchInput.value });
+    count.textContent = `${directory.countBrands(visible)}ブランド · ${visible.length}系統を表示`;
+    list.innerHTML = visible.length ? visible.map((group) => `
+      <section class="brand-directory-group" aria-labelledby="directory-${escapeHTML(group.styleId)}">
+        <div class="brand-directory-group-heading"><span>${group.audience === "men" ? "MEN" : "WOMEN"}</span><h2 id="directory-${escapeHTML(group.styleId)}">${escapeHTML(group.style)}</h2><small>${group.brands.length}ブランド</small></div>
+        <div class="brand-directory-grid">${group.brands.map((brand) => `
+          <article class="brand-directory-card">
+            <h3>${escapeHTML(brand.name)}</h3>
+            <p>${escapeHTML(brand.reason)}</p>
+            ${brand.url ? `<a href="${safeExternalUrl(brand.url)}" target="_blank" rel="noopener noreferrer">公式サイトを見る <span aria-hidden="true">↗</span></a>` : ""}
+          </article>`).join("")}</div>
+      </section>`).join("") : '<p class="brand-directory-empty">該当するブランドはありません。検索語や系統を変えてみてください。</p>';
+  }
+  audienceSelect.addEventListener("change", () => {
+    if (styleSelect.value !== "all" && !directory.groups.some((group) => group.styleId === styleSelect.value && (audienceSelect.value === "all" || group.audience === audienceSelect.value))) styleSelect.value = "all";
+    [...styleSelect.options].forEach((option) => {
+      option.hidden = option.value !== "all" && audienceSelect.value !== "all" && !option.value.startsWith(`${audienceSelect.value}_`);
+    });
+    updateList();
+  });
+  styleSelect.addEventListener("change", updateList);
+  searchInput.addEventListener("input", updateList);
+  updateList();
 }
 
 function bindRouteButtons() {
@@ -1288,14 +1524,18 @@ window.addEventListener?.('konomi:auth-change', (event) => {
   if (!window.KONOMI_AUTH_REQUIRED || event.detail.userId === activeAuthUserId) return;
   activeAuthUserId = event.detail.userId;
   fashionPreference = null;
-  localShops = { key: '', status: 'idle', shops: [], error: '' };
+  shopBrowseArea = '';
+  shopStyleFilter = 'あなた向け';
+  shopVisibleCount = 8;
   state = loadState();
   if (activeAuthUserId) void initializeFashionPreference();
   render();
 });
 
 document.querySelectorAll("header [data-route], nav [data-route]").forEach((button) => {
-  button.addEventListener("click", () => setRoute(button.dataset.route));
+  button.addEventListener("click", () => setRoute(
+    button.closest("#bottomNav") && button.dataset.route === "swipe" && state.sessionCompleted
+      ? "discover" : button.dataset.route));
 });
 document.getElementById("aboutButton").addEventListener("click", () => aboutDialog.showModal());
 aboutDialog.querySelector(".dialog-close").addEventListener("click", () => aboutDialog.close());

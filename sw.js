@@ -1,6 +1,8 @@
-const cacheName = "konomi-shell-v35";
-const shell = ["./", "./index.html", "./local-preview.js", "./preview.html", "./preview.js", "./preview.css", "./styles.css", "./ui-refresh.css", "./minimal-theme.css", "./typography.css", "./assets/fonts/NotoSansJP-Variable.ttf", "./assets/fonts/Manrope-Variable.ttf", "./photo-analysis.js", "./assets/photo-analysis.json", "./generated-outfits.js", "./diagnosis-pool.js", "./data.js", "./specialist-brands.js", "./products.js", "./shops.js", "./recommendations.js", "./logic.js", "./fresh-feed.js", "./wardrobe.js", "./feed-ui.js", "./app.js", "./credits.html", "./credits.css", "./credits.js", "./assets/photo-sources.json", "./assets/generated-photo-sources.json", "./icon.svg", "./manifest.webmanifest"];
+const cacheName = "konomi-shell-v64";
+const shell = ["./", "./index.html", "./local-preview.js", "./preview.html", "./preview.js", "./preview.css", "./styles.css", "./ui-refresh.css", "./minimal-theme.css", "./brand-directory.css", "./brand-feed.css", "./photo-audience.js", "./brand-diagnosis.js", "./app-bootstrap.js", "./typography.css", "./assets/fonts/NotoSansJP-Variable.ttf", "./assets/fonts/Manrope-Variable.ttf", "./photo-analysis.js", "./assets/photo-analysis.json", "./assets/brand-diagnosis-catalog.json", "./assets/vintage-brand-photos.json", "./generated-outfits.js", "./diagnosis-pool.js", "./data.js", "./specialist-brands.js", "./products.js", "./brand-directory.js", "./brand-feed.js", "./shops.js", "./recommendations.js", "./logic.js", "./fresh-feed.js", "./wardrobe.js", "./feed-ui.js", "./app.js", "./credits.html", "./credits.css", "./credits.js", "./icon.svg", "./manifest.webmanifest"];
 shell.push("./cloud-sync.js");
+shell.push("./free-shop-directory.js");
+shell.push("./shop-review-audit.js");
 shell.push("./fashion-preference.js");
 shell.push("./fashion-analysis.css");
 

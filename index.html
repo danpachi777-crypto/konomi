@@ -3,16 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="#193f34" />
     <meta name="description" content="好きな服を左右にスワイプして、自分の好みと着こなしを見つけるアプリ" />
     <script src="local-preview.js?v=21"></script>
     <script>window.KONOMI_AUTH_REQUIRED = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true; if (window.KONOMI_AUTH_REQUIRED) document.documentElement.classList.add("auth-required");</script>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="styles.css?v=21" />
+    <link rel="stylesheet" href="styles.css?v=33" />
     <link rel="stylesheet" href="ui-refresh.css?v=27" />
     <link rel="stylesheet" href="fashion-analysis.css?v=23" />
-    <link rel="stylesheet" href="minimal-theme.css?v=33" />
+    <link rel="stylesheet" href="minimal-theme.css?v=37" />
+    <link rel="stylesheet" href="brand-directory.css?v=4" />
+    <link rel="stylesheet" href="brand-feed.css?v=5" />
     <title>KONOMI — 好きから、似合うへ。</title>
   </head>
   <body>
@@ -45,11 +47,8 @@
         <button type="button" data-route="swipe" aria-label="診断">
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="4"/><path d="m9 12 2 2 4-4"/></svg></span><small>診断</small>
         </button>
-        <button type="button" data-route="discover" aria-label="おすすめコーデ">
-          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3 2.6 6.4L21 12l-6.4 2.6L12 21l-2.6-6.4L3 12l6.4-2.6L12 3Z"/></svg></span><small>おすすめ</small>
-        </button>
-        <button type="button" data-route="saved" aria-label="あなたが好きな服">
-          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 4.5a5.2 5.2 0 0 0-7.4 0L12 5.6l-1.1-1.1a5.2 5.2 0 0 0-7.4 7.4L12 20.4l8.5-8.5a5.2 5.2 0 0 0 0-7.4Z"/></svg></span><small>あなたが好きな服</small>
+        <button type="button" data-route="saved" aria-label="探す">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 4.2 4.2"/></svg></span><small>探す</small>
         </button>
         <button type="button" data-route="result" aria-label="結果">
           <span aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20V12M12 20V4M19 20V8"/><path d="M3 20h18"/></svg></span><small>結果</small>
@@ -62,11 +61,11 @@
       <button class="dialog-close" type="button" aria-label="閉じる">×</button>
       <p class="eyebrow">ABOUT KONOMI</p>
       <h2>このサービスについて</h2>
-      <p>初回はメンズ14系統・ウィメンズ12系統から約150枚をランダムに見比べます。結果に応じて、未表示の写真を「あなたが好きな服」に追加表示します。手持ち服の写真はこの端末内に保存します。</p>
-      <p>系統診断と一部の追加写真はAIで生成したイメージです。追加の実写はWebサイトやアプリでの利用が認められたPexels素材を使用しています。人物・撮影者による推奨や提携を示すものではありません。</p>
-      <p>おすすめは、選んだ服ごとの配色・形・素材と、選ばなかった服やおすすめへの回答から算出します。ブランドの公式情報を案内し、写真と同じ商品や店頭在庫であるとは断定しません。口コミはGoogle Mapsから取得できた文章のみを出典付きで表示します。</p>
+      <p>初回は94ブランドの写真から、メンズ14系統・ウィメンズ12系統に沿って約150枚を見比べます。診断後の「好き」には、回答した系統に合う未表示のブランド写真を表示します。手持ち服の写真はこの端末内に保存します。</p>
+      <p>診断と結果では、登録した94ブランドと古着屋の商品・掲載写真だけを使用します。掲載元から写真を表示し、商品・掲載ページへリンクします。診断中はブランド名と系統名を表示しません。</p>
+      <p>おすすめは、写真への好き・嫌いの回答と、登録したブランドや古着屋の系統をもとに並べます。各店の掲載元を案内しますが、写真と同じ商品や店頭在庫、営業状況は保証できません。一部店舗の公開口コミを個別に参考にしています。口コミは自動取得していません。</p>
       <div class="dialog-links">
-        <a href="credits.html" target="_blank" rel="noopener">写真クレジット一覧</a>
+        <a href="credits.html" target="_blank" rel="noopener">写真の掲載元一覧</a>
         <a href="PHOTO_SOURCES.md" target="_blank" rel="noopener">写真の管理方針</a>
       </div>
       <details id="cloudPanel" hidden>
@@ -90,15 +89,21 @@
       <script src="data.js?v=30"></script>
     <script src="specialist-brands.js?v=21"></script>
     <script src="products.js?v=21"></script>
-    <script src="shops.js?v=21"></script>
+    <script src="brand-directory.js?v=2"></script>
+    <script src="photo-audience.js?v=3"></script>
+    <script src="brand-feed.js?v=9"></script>
+    <script src="brand-diagnosis.js?v=6"></script>
+    <script src="free-shop-directory.js?v=2"></script>
+    <script src="shop-review-audit.js?v=1"></script>
+    <script src="shops.js?v=22"></script>
       <script src="recommendations.js?v=30"></script>
-    <script src="logic.js?v=25"></script>
+    <script src="logic.js?v=26"></script>
     <script src="cloud-sync.js?v=23"></script>
     <script src="fashion-preference.js?v=23"></script>
       <script src="diagnosis-pool.js?v=31"></script>
       <script src="fresh-feed.js?v=1"></script>
       <script src="wardrobe.js?v=1"></script>
-      <script src="feed-ui.js?v=2"></script>
-      <script src="app.js?v=35"></script>
+      <script src="feed-ui.js?v=3"></script>
+      <script src="app-bootstrap.js?v=19"></script>
   </body>
 </html>

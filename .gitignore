@@ -1,4 +1,6 @@
 .qa-*/
+.qa-*.png
+assets/shimofuru-research.json
 preview-*.png
 node_modules/
 .python/

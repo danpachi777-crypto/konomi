@@ -23,11 +23,15 @@ function extractReviewSignals(reviews = []) {
   return [...signals];
 }
 
-async function discoverShops({ area, signals }, { apiKey, fetchImpl = fetch } = {}) {
+async function discoverShops({ area, signals, brands, styles }, { apiKey, fetchImpl = fetch } = {}) {
   if (!apiKey) return { status: "unconfigured", shops: [] };
   const safeArea = String(area || "").trim().slice(0, 60);
   if (!safeArea) throw new Error("買い物エリアを設定してください");
   const terms = Array.isArray(signals) ? signals.filter((s) => typeof s === "string").slice(0, 3) : [];
+  const cleanTerms = (values) => Array.isArray(values) ? [...new Set(values.filter((value) => typeof value === "string")
+    .map((value) => value.trim().slice(0, 40)).filter(Boolean))].slice(0, 2) : [];
+  const likedBrands = cleanTerms(brands);
+  const likedStyles = cleanTerms(styles);
   const request = async (url, body, mask) => {
     const response = await fetchImpl(url, {
       method: body ? "POST" : "GET",
@@ -38,17 +42,24 @@ async function discoverShops({ area, signals }, { apiKey, fetchImpl = fetch } = 
     if (!response.ok) throw new Error("Google Placesの取得に失敗しました。API設定・利用制限をご確認ください。");
     return response.json();
   };
-  const searches = await Promise.all([
+  const queries = [
+    ...likedBrands.map((brand) => `${safeArea} ${brand} 取扱店 服`),
+    ...(likedStyles.length ? [`${safeArea} ${likedStyles[0]} 服屋`] : []),
     `${safeArea} セレクトショップ ${terms.join(" ")}`,
     `${safeArea} 古着屋 洋服`
-  ].map((textQuery) => request("https://places.googleapis.com/v1/places:searchText",
-    { textQuery, languageCode: "ja", pageSize: 6, includedType: "clothing_store", strictTypeFiltering: true },
+  ].slice(0, 5);
+  const searchResults = await Promise.allSettled(queries.map((textQuery) => request("https://places.googleapis.com/v1/places:searchText",
+    { textQuery, languageCode: "ja", pageSize: 8, includedType: "clothing_store", strictTypeFiltering: true },
     "places.id,places.businessStatus")));
+  if (searchResults.every((result) => result.status === "rejected")) {
+    throw new Error("Google Placesの店舗検索に失敗しました。API設定・利用制限をご確認ください。");
+  }
+  const searches = searchResults.filter((result) => result.status === "fulfilled").map((result) => result.value);
   const ids = [...new Set(searches.flatMap((result) => result.places || [])
-    .filter((place) => place.businessStatus === "OPERATIONAL").map((place) => place.id))].slice(0, 6);
+    .filter((place) => place.businessStatus === "OPERATIONAL").map((place) => place.id))].slice(0, 12);
   const results = await Promise.allSettled(ids.map((id) => request(
     `https://places.googleapis.com/v1/places/${encodeURIComponent(id)}?languageCode=ja`, null,
-    "id,displayName,formattedAddress,googleMapsUri,websiteUri,rating,userRatingCount,reviews,businessStatus")));
+    "id,displayName,formattedAddress,googleMapsUri,websiteUri,nationalPhoneNumber,currentOpeningHours,rating,userRatingCount,reviews,businessStatus,attributions")));
   if (ids.length && results.every((result) => result.status === "rejected")) {
     throw new Error("店舗の詳細と口コミを取得できませんでした。Google Placesの設定をご確認ください。");
   }
@@ -60,6 +71,8 @@ async function discoverShops({ area, signals }, { apiKey, fetchImpl = fetch } = 
       id: `places-${place.id}`, name: place.displayName?.text || "名称未取得",
       type: "Google Mapsで見つかった衣料品店", query: place.formattedAddress + " " + place.displayName?.text,
       address: place.formattedAddress, mapsUrl: place.googleMapsUri, officialUrl: place.websiteUri || "",
+      phone: place.nationalPhoneNumber || "", hours: place.currentOpeningHours?.weekdayDescriptions || [],
+      attribution: (place.attributions || []).map((item) => ({ name: item.provider || "", url: item.providerUri || "" })),
       tags: signals.filter((signal) => ["古着", "モード", "ストリート"].includes(signal)),
       features: signals.filter((signal) => !["古着", "モード", "ストリート"].includes(signal)),
       description: signals.length ? `取得できた口コミに「${signals.join("・")}」の言及があります。取り扱いの参考で、現在の在庫は未確認です。`
@@ -67,10 +80,12 @@ async function discoverShops({ area, signals }, { apiKey, fetchImpl = fetch } = 
       rating: place.rating, reviewCount: place.userRatingCount, reviewStatus: "fetched",
       sourceLabel: "Google Maps / 取得できた口コミ", fetchedAt: new Date().toISOString(),
       reviews: reviews.map((review) => ({ text: review.text?.text || "", author: review.authorAttribution?.displayName || "Google Mapsユーザー",
+        authorPhoto: review.authorAttribution?.photoUri || "",
         authorUri: review.authorAttribution?.uri || place.googleMapsUri, url: review.googleMapsUri || place.googleMapsUri,
         publishedAt: review.publishTime }))
     };
   });
-  return { status: shops.length ? "ready" : "empty", shops, partial: results.some((r) => r.status === "rejected") };
+  return { status: shops.length ? "ready" : "empty", shops,
+    partial: [...searchResults, ...results].some((result) => result.status === "rejected") };
 }
 module.exports = { extractReviewSignals, discoverShops };

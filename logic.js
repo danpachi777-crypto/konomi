@@ -117,6 +117,26 @@
       .sort((a, b) => b.score - a.score || b.likes - a.likes || a.name.localeCompare(b.name, "ja"));
   }
 
+  function rankAnsweredStyles(cards, history, audience = "all") {
+    const byId = new Map(cards.map((card) => [card.id, card]));
+    const latest = new Map(history.map((entry) => [entry.id, entry.choice]));
+    const counts = new Map();
+    for (const [id, choice] of latest) {
+      if (choice !== 'like' && choice !== 'no') continue;
+      const card = byId.get(id);
+      if (!card?.styleId || (audience !== 'all' && card.audience !== audience)) continue;
+      const entry = counts.get(card.styleId) || { id: card.styleId, name: card.category, audience: card.audience,
+        likes: 0, dislikes: 0 };
+      entry[choice === 'like' ? 'likes' : 'dislikes']++;
+      counts.set(card.styleId, entry);
+    }
+    return [...counts.values()].filter((entry) => entry.likes > 0)
+      .map((entry) => ({ ...entry, answered: entry.likes + entry.dislikes,
+        percentage: Math.round(entry.likes / (entry.likes + entry.dislikes) * 100),
+        score: entry.likes * 2 - entry.dislikes }))
+      .sort((a, b) => b.score - a.score || b.likes - a.likes || a.name.localeCompare(b.name, 'ja'));
+  }
+
   function rankTags(scores) {
     return Object.entries(scores)
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ja"))
@@ -249,6 +269,61 @@
       .slice(0, limit);
   }
 
+  // Match diagnosis style IDs to shop descriptions that were actually confirmed in the directory.
+  // The final, broad tag is a tie breaker; a shop needs a stronger tag to qualify.
+  const SHOP_STYLE_TAGS = {
+    men_trad: { きれいめ: 5, ヨーロッパ古着: 3, ミニマル: 1 },
+    men_preppy: { きれいめ: 5, アメカジ: 3, カジュアル: 1 },
+    men_clean_casual: { きれいめ: 5, ミニマル: 3, カジュアル: 1 },
+    men_business: { きれいめ: 5, ブランド古着: 3 },
+    men_amekaji: { アメカジ: 5, デニム: 4, ヴィンテージ: 1 },
+    men_french: { ヨーロッパ古着: 5, ミニマル: 3, カジュアル: 1 },
+    men_military: { ミリタリー: 5, ワーク: 3, ヴィンテージ: 1 },
+    men_sportmix: { スポーティ: 5, ストリート: 3, カジュアル: 1 },
+    men_outdoor: { アウトドア: 5, スポーティ: 3, カジュアル: 1 },
+    men_street: { ストリート: 5, スポーティ: 3, カジュアル: 1 },
+    men_work: { ワーク: 5, デニム: 4, アメカジ: 3 },
+    men_mode: { モード: 5, ブランド古着: 3, 個性的: 1 },
+    men_normcore: { ミニマル: 5, カジュアル: 3 },
+    men_korean: { きれいめ: 5, モード: 3, ストリート: 1 },
+    women_casual: { カジュアル: 5, デニム: 3 },
+    women_basic: { ミニマル: 5, きれいめ: 3, カジュアル: 1 },
+    women_trad: { きれいめ: 5, ヨーロッパ古着: 3, ミニマル: 1 },
+    women_mode: { モード: 5, ブランド古着: 3, 個性的: 1 },
+    women_girly: { ガーリー: 5, フェミニン: 4, レトロ: 3 },
+    women_adult: { きれいめ: 5, フェミニン: 3, ミニマル: 1 },
+    women_menslike: { ワーク: 5, アメカジ: 3, ストリート: 1 },
+    women_street: { ストリート: 5, スポーティ: 3, カジュアル: 1 },
+    women_rock: { ロック: 5, 個性的: 1 },
+    women_gyaru: { "Y2K": 5, 個性的: 1 },
+    women_outdoor: { アウトドア: 5, スポーティ: 3, カジュアル: 1 },
+    women_military: { ミリタリー: 5, ワーク: 3, カジュアル: 1 }
+  };
+
+  function selectPersonalShopRecommendations(shops, answeredStyles, audience = "all", limit = 24) {
+    const likedStyles = answeredStyles.filter((style) => style.likes > 0 && style.score > 0).slice(0, 3);
+    if (!likedStyles.length) return [];
+    return shops
+      .filter((shop) => audience === "all" || !shop.audiences || shop.audiences.includes("all") || shop.audiences.includes(audience))
+      .map((shop) => {
+        const styleMatches = likedStyles.flatMap((style, index) => {
+          const weights = SHOP_STYLE_TAGS[style.id] || {};
+          const tags = (shop.tags || []).filter((tag) => (weights[tag] || 0) >= 3);
+          if (!tags.length) return [];
+          const score = tags.reduce((sum, tag) => sum + weights[tag], 0) * (3 - index);
+          return [{ style: style.name, tags, score }];
+        });
+        const matchScore = styleMatches.reduce((sum, match) => sum + match.score, 0);
+        return { ...shop, matchScore, styleMatches,
+          personalReason: styleMatches.length
+            ? `好きと答えた「${styleMatches.map((match) => match.style).join("・")}」に対し、掲載情報の「${[...new Set(styleMatches.flatMap((match) => match.tags))].slice(0, 3).join("・")}」が近い店です。`
+            : "" };
+      })
+      .filter((shop) => shop.matchScore > 0)
+      .sort((a, b) => b.matchScore - a.matchScore || a.id.localeCompare(b.id))
+      .slice(0, limit);
+  }
+
   function buildPreference(cards, likedIds) {
     const liked = new Set(likedIds);
     const weights = {};
@@ -375,6 +450,7 @@
     countTags,
     countCategories,
     rankStylePreferences,
+    rankAnsweredStyles,
     rankTags,
     getArchetype,
     rankArchetypes,
@@ -383,6 +459,7 @@
     selectPersonalizedLooks,
     filterCardsByAudience,
     selectProductRecommendations,
-    selectShopRecommendations
+    selectShopRecommendations,
+    selectPersonalShopRecommendations
   };
 });

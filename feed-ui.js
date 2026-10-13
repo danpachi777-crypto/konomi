@@ -61,13 +61,13 @@
     const refresh = element('button', 'text-button fresh-feed-refresh', '新着を確認');
     refresh.type = 'button';
     refresh.onclick = () => location.reload();
-    const note = element('p', 'shop-note', '写真はコーデの参考です。購入先は似た服を探せる公式サイトで、写真と同じ商品の在庫や価格は示していません。');
+    const note = element('p', 'shop-note', '写真は登録した94ブランドと古着屋の掲載写真です。購入先の案内は似た服を探せる公式サイトで、写真と同じ商品の在庫や価格は示していません。');
     screen.append(grid, status, more, refresh, note);
     app.append(screen);
     let owned = [];
     try { owned = await wardrobe.list(owner()); }
     catch { status.textContent = '手持ち服の保存を利用できません。写真は続けて見られます。'; }
-    if (state.route !== 'saved' || !app.contains(screen)) return;
+    if (state.route !== 'looks' || !app.contains(screen)) return;
     for (const item of owned) filter.append(new Option(item.name, item.id));
     if (owned.some(item => item.id === state.activeWardrobeId)) filter.value = state.activeWardrobeId;
     else state.activeWardrobeId = '';
@@ -86,7 +86,7 @@
       }, { threshold: .25 });
     }
     function appendBatch() {
-      if (loading || state.route !== 'saved') return;
+      if (loading || state.route !== 'looks') return;
       loading = true;
       const selected = owned.find(item => item.id === filter.value);
       const remaining = rankFreshFeed(window.KONOMI_CARDS, {
@@ -105,7 +105,7 @@
         renderedIds.add(card.id);
         const img = element('img');
         img.src = card.image;
-        img.alt = card.label + 'のコーデ';
+        img.alt = card.brand + 'の服';
         img.loading = 'lazy';
         article.append(img);
         const content = element('div', 'fresh-feed-card-content');
@@ -188,7 +188,7 @@
     for (const [value, label] of [['top','トップス'],['bottom','ボトムス'],['outer','アウター'],['shoes','靴']])
       category.append(new Option(label, value));
     const style = element('select');
-    const styles = new Map(window.KONOMI_CARDS.filter(card => card.styleId && card.id === 'style-' + card.styleId &&
+    const styles = new Map(window.KONOMI_CARDS.filter(card => card.styleId &&
       (state.profile.gender === 'all' || card.audience === state.profile.gender))
       .map(card => [card.styleId, card.category]));
     for (const [id, label] of styles) style.append(new Option(label, id));
@@ -221,7 +221,7 @@
           card.append(image, element('b', '', item.name), element('small', '', styles.get(item.styleId) || ''));
           const use = element('button', 'secondary-button', 'この服に合わせる');
           use.type = 'button';
-          use.onclick = () => { state.activeWardrobeId = item.id; context.persist(); setRoute('saved'); };
+          use.onclick = () => { state.activeWardrobeId = item.id; context.persist(); setRoute('looks'); };
           const remove = element('button', 'text-button', '削除');
           remove.type = 'button';
           remove.onclick = async () => {

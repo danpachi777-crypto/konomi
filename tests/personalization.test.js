@@ -35,19 +35,37 @@ test("API未設定時は外部通信せず未接続を返す", async () => {
   const result = await discoverShops({ area: "渋谷" }, { fetchImpl: () => { throw new Error("Must not call"); } });
   assert.equal(result.status, "unconfigured");
 });
-test("Google公式APIの店舗と口コミから出典付き候補を作り、閉店店を除く", async () => {
+test("好きなブランド・系統で地域の服屋を探し、Googleの店舗情報と出典付き口コミを表示用に返す", async () => {
   const calls = [];
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
     return { ok: true, json: async () => url.includes("searchText")
       ? { places: [{ id: "open", businessStatus: "OPERATIONAL" }, { id: "closed", businessStatus: "CLOSED_PERMANENTLY" }] }
       : { id: "open", displayName: { text: "地域の服屋" }, formattedAddress: "渋谷区", googleMapsUri: "https://maps.google.com/example",
+        nationalPhoneNumber: "03-0000-0000", currentOpeningHours: { weekdayDescriptions: ["月曜日: 11:00～20:00"] },
         reviews: [{ text: { text: "デニムが豊富です。" }, authorAttribution: { displayName: "投稿者", uri: "https://maps.google.com/author" } }] } };
   };
-  const result = await discoverShops({ area: "渋谷", signals: ["デニム素材"] }, { apiKey: "test-key", fetchImpl });
+  const result = await discoverShops({ area: "渋谷", signals: ["デニム素材"], brands: ["BEAMS"], styles: ["シティーボーイ"] }, { apiKey: "test-key", fetchImpl });
   assert.equal(result.shops.length, 1);
   assert.equal(result.shops[0].name, "地域の服屋");
   assert.ok(result.shops[0].features.includes("デニム素材"));
   assert.equal(result.shops[0].reviews[0].author, "投稿者");
+  assert.equal(result.shops[0].phone, "03-0000-0000");
+  assert.equal(result.shops[0].hours[0], "月曜日: 11:00～20:00");
+  assert.ok(calls.some((call) => JSON.parse(call.options.body || '{}').textQuery?.includes('BEAMS')));
+  assert.ok(calls.some((call) => JSON.parse(call.options.body || '{}').textQuery?.includes('シティーボーイ')));
   assert.ok(calls.every((call) => call.url.startsWith("https://places.googleapis.com/")));
+});
+
+test("一部の検索が失敗しても取得できた店舗を残す", async () => {
+  const fetchImpl = async (url, options) => {
+    if (url.includes('searchText') && JSON.parse(options.body).textQuery.includes('古着屋')) throw new Error('temporary');
+    return { ok: true, json: async () => url.includes('searchText')
+      ? { places: [{ id: 'open', businessStatus: 'OPERATIONAL' }] }
+      : { id: 'open', displayName: { text: '服屋' }, formattedAddress: '渋谷', googleMapsUri: 'https://maps.google.com/example' } };
+  };
+  const result = await discoverShops({ area: '渋谷' }, { apiKey: 'test-key', fetchImpl });
+  assert.equal(result.status, 'ready');
+  assert.equal(result.shops.length, 1);
+  assert.equal(result.partial, true);
 });

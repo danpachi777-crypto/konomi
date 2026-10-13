@@ -1,142 +1,149 @@
-/* Two-color interface. Outfit photos and the external map retain their source colors. */
+/* KONOMI editorial theme: warm beige surfaces and deep forest green. */
 :root {
-  --paper: #000000;
-  --white: #000000;
-  --ink: #2f8f61;
-  --muted: #2f8f61;
-  --line: #2f8f61;
-  --accent: #2f8f61;
-  --highlight: #2f8f61;
-  --sage: #2f8f61;
-  --yellow: #2f8f61;
-  --radius: 8px;
+  --paper: #f3efe6;
+  --white: #fffcf5;
+  --ink: #193f34;
+  --muted: #64786d;
+  --line: #d6d8ca;
+  --accent: #245846;
+  --highlight: #dce8d5;
+  --sage: #9fb49f;
+  --yellow: #e6dec6;
+  --radius: 24px;
+  color-scheme: light;
 }
 
-html, body { background: #000000 !important; color: #2f8f61 !important; }
-body :where(*) { color: #2f8f61 !important; background-color: transparent !important; background-image: none !important; border-color: #2f8f61 !important; outline-color: #2f8f61 !important; box-shadow: none !important; text-shadow: none !important; }
-body :where(*)::before, body :where(*)::after { color: #2f8f61 !important; background-color: transparent !important; background-image: none !important; border-color: #2f8f61 !important; box-shadow: none !important; }
-::selection { background: #2f8f61; color: #000000; }
-input, select, textarea { accent-color: #2f8f61; caret-color: #2f8f61; }
-input::placeholder { color: #2f8f61; opacity: 1; }
+html, body { background: var(--paper); color: var(--ink); }
+html { scroll-behavior: auto; }
+body { background-image: radial-gradient(circle at 94% 4%, #e8eee2 0, transparent 32%), linear-gradient(180deg, #f7f3ea 0%, #f3efe6 42%); }
+::selection { background: #b9d1b4; color: #193f34; }
+input, select, textarea { accent-color: var(--accent); caret-color: var(--ink); }
+input::placeholder { color: #879488; opacity: 1; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 3px solid #8eae92; outline-offset: 3px; }
+button { touch-action: manipulation; transition: background-color .14s ease, transform .14s ease, border-color .14s ease; }
+.primary-button:active, .secondary-button:active, .choice-button:active, .bottom-nav button:active { transform: scale(.98); }
 
-/* Flat surfaces and simple edges. */
-.topbar, .profile-form, .result-hero, .result-panel, .shop-section, .store-section,
-.diagnosis-analysis, .product-card, .store-card, .novel-look-card, .style-feed-card,
-.style-score, .taste-counts > div, .taste-liked-card, .analysis-insights article,
-.discover-invite, .sheet-dialog, .toast, .bottom-nav, .map-panel,
-.counter, .home-collage, .home-tastes span, .profile-summary > span,
-.choice-grid label > span, .field-group input, .field-group select {
-  background-color: #000000 !important;
-  border: 1px solid #2f8f61 !important;
-  border-radius: 8px !important;
+/* Navigation and shared actions. */
+.topbar { border-bottom: 1px solid var(--line); background: rgba(247, 243, 234, .88); backdrop-filter: blur(18px); }
+.brand { color: var(--ink); }
+.brand-mark { background: var(--ink); color: var(--white); border-radius: 11px; }
+.topbar .text-button { color: var(--ink); border-color: var(--line); background: var(--white); }
+.local-mobile-link { background: var(--highlight); color: var(--ink); }
+.eyebrow { color: var(--accent); }
+.primary-button, .dark-button { background: var(--ink); color: var(--white); border: 1px solid var(--ink); box-shadow: 0 12px 26px rgba(25, 63, 52, .14); }
+.primary-button:hover, .dark-button:hover { background: #285b49; color: var(--white); }
+.primary-button > span { background: #dce8d5; color: var(--ink); }
+.secondary-button { background: var(--white); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 4px 15px rgba(30, 58, 44, .04); }
+.secondary-button:hover { background: #eaf0e5; border-color: #9fb49f; }
+.text-button { color: var(--ink); }
+.bottom-nav { width: min(470px, calc(100% - 24px)); background: rgba(255, 252, 245, .94); border: 1px solid #d6d8ca; border-radius: 19px; box-shadow: 0 15px 38px rgba(25, 63, 52, .16); backdrop-filter: blur(18px); }
+.bottom-nav button { min-width: 0; color: var(--muted); border-radius: 13px; }
+.bottom-nav button.is-active { background: var(--ink); color: var(--white); }
+.bottom-nav button[data-route="saved"] small { font-size: 9px; white-space: nowrap; }
+.toast { background: var(--ink); color: var(--white); box-shadow: 0 10px 25px rgba(25, 63, 52, .2); }
+
+/* Editorial opening: quiet typography beside the outfit photography. */
+.home-screen { gap: clamp(28px, 5vw, 72px); }
+.home-copy h1 { color: var(--ink); }
+.home-copy h1 em { color: var(--accent); font-style: normal; text-decoration: underline; text-decoration-color: #adc5aa; text-decoration-thickness: .08em; text-underline-offset: .13em; }
+.home-status { color: var(--accent); }
+.home-status > span { background: var(--accent); box-shadow: 0 0 0 5px #deeadb; }
+.lead { color: #5c7165; }
+.home-collage { overflow: hidden; background: #e2eadf; border: 1px solid #d3ddcf; border-radius: 32px; }
+.home-collage img { border: 4px solid var(--white); border-radius: 21px; box-shadow: 0 20px 42px rgba(25, 63, 52, .16); }
+.home-collage::before { color: #90a894; }
+.collage-label { background: var(--white); color: var(--ink); }
+.floating-like { background: var(--ink); color: var(--white); box-shadow: 0 15px 35px rgba(25, 63, 52, .22); }
+.home-tastes span { background: #e7ede2; color: var(--ink); border: 1px solid #d5dfd0; }
+.home-steps article { border-color: var(--line); }
+
+/* Forms and diagnosis cards. */
+.profile-form, .result-panel, .shop-section, .store-section, .diagnosis-analysis,
+.product-card, .store-card, .novel-look-card, .style-feed-card, .taste-liked-card,
+.style-score, .analysis-insights article, .sheet-dialog, .map-panel, .wardrobe-form,
+.wardrobe-card, .fresh-feed-card {
+  background: var(--white); border: 1px solid var(--line); border-radius: 22px;
+  box-shadow: 0 12px 34px rgba(25, 63, 52, .055);
 }
-.topbar { border-width: 0 0 1px !important; }
-.home-collage, .result-hero { overflow: hidden; }
-.home-collage::before, .collage-label, .floating-like, .home-tastes { display: none !important; }
-.home-collage img, .result-photo-stack img, .profile-preview img, .complete-collage img {
-  transform: none !important;
-  border: 1px solid #2f8f61 !important;
-  border-radius: 8px !important;
+.profile-form { border-radius: 30px; }
+.field-group input[type="text"], .field-group select, .choice-grid label > span,
+.fresh-wardrobe-filter, .wardrobe-field input, .wardrobe-field select {
+  background: #fffdf8; color: var(--ink); border: 1px solid var(--line); border-radius: 13px;
 }
-.home-copy h1 em { font-style: normal; text-decoration: underline; text-decoration-color: #2f8f61; text-underline-offset: .12em; }
-.step-number { opacity: 1; }
-
-/* Actions use the green fill, with black labels for contrast. */
-.primary-button, .like-button, .bottom-nav button.is-active,
-.choice-grid input:checked + span, .occasion-tabs button.is-selected,
-.recommendation-feedback button[aria-pressed="true"],
-.recommendation-feedback button:first-child, .brand-mark {
-  background-color: #2f8f61 !important;
-  color: #000000 !important;
-  border: 1px solid #2f8f61 !important;
-  border-radius: 8px !important;
+.choice-grid input:checked + span { background: #e6eee2; border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.choice-grid input:focus-visible + span { outline-color: #8eae92; }
+.field-group input[type="text"]:focus, .field-group select:focus { outline-color: rgba(142, 174, 146, .4); border-color: var(--accent); }
+.step-number { color: #aec4ad; opacity: 1; }
+.selection-note { color: var(--accent); }
+.progress-track, .meter { background: #e3e8da; border-radius: 99px; }
+.progress-track span, .meter i { background: var(--accent); }
+.fashion-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--white); box-shadow: 0 16px 42px rgba(25, 63, 52, .12); }
+.card-active { transition: transform .16s ease-out, opacity .16s ease-out; }
+.card-active.is-dragging { transition: none; }
+.fashion-card img { display: block; flex: 1 1 auto; min-height: 0; height: auto; object-fit: contain; background: #ebe8dd; }
+.card-shade { display: none; }
+.card-caption { position: static; flex: 0 0 auto; padding: 17px 20px; color: var(--ink); background: var(--white); border-top: 1px solid var(--line); }
+.card-caption > span { padding: 0; background: transparent; backdrop-filter: none; }
+.card-caption h2 { margin-top: 4px; color: var(--ink); }
+.card-caption p { margin: 4px 0 0; color: var(--muted); }
+.diagnosis-screen .choice-button, .discover-screen .choice-button { border-radius: 15px; }
+.diagnosis-screen .no-button, .discover-screen .no-button { background: var(--white); color: var(--ink); border: 1px solid var(--line); }
+.diagnosis-screen .like-button, .discover-screen .like-button { background: var(--ink); color: var(--white); border: 1px solid var(--ink); }
+.recommendation-basis { display: grid; gap: 4px; margin: 10px 0 14px; padding: 12px 15px; border: 1px solid var(--line); border-radius: 16px; background: var(--white); color: var(--ink); }
+.recommendation-basis b { font-size: 12px; }
+.recommendation-basis p { margin: 0; font-size: 12px; line-height: 1.5; }
+.recommendation-basis small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.recommendation-basis-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 3px; }
+.recommendation-basis-tags span { padding: 4px 7px; border-radius: 7px; background: #e9eee5; color: var(--ink); font-size: 10px; }
+@media (max-width: 650px) {
+  .discover-screen .card-stage { height: min(48vh, 440px); }
 }
-.primary-button *, .like-button *, .bottom-nav button.is-active *,
-.choice-grid input:checked + span *, .occasion-tabs button.is-selected *,
-.recommendation-feedback button[aria-pressed="true"] *,
-.recommendation-feedback button:first-child *, .brand-mark * { color: #000000 !important; }
-.primary-button > span { background-color: #000000 !important; color: #2f8f61 !important; }
-.secondary-button, .dark-button, .no-button, .undo-button, .text-button,
-.recommendation-feedback button, .bottom-nav button, .dialog-close {
-  background-color: #000000 !important;
-  color: #2f8f61 !important;
-  border: 1px solid #2f8f61 !important;
-  border-radius: 8px !important;
-}
-.primary-button:hover, .like-button:hover, .choice-button:hover { transform: none; }
-.choice-button, .undo-button { border-radius: 8px !important; }
-.bottom-nav { border-radius: 8px !important; backdrop-filter: none; }
-.progress-track, .meter { background-color: #000000 !important; border: 1px solid #2f8f61 !important; border-radius: 2px !important; }
-.progress-track span, .meter i, .home-status > span { background-color: #2f8f61 !important; border-radius: 2px !important; }
+.undo-button { background: var(--white); color: var(--ink); border: 1px solid var(--line); }
+.stamp-like, .stamp-no { background: var(--white); color: var(--accent); }
 
-/* Give photo captions a solid reading area without tinting the clothes. */
-.fashion-card, .fashion-card img, .novel-look-photo, .recommend-card img,
-.saved-card img, .taste-liked-card img, .style-feed-card img { background-color: #000000 !important; }
-.fashion-card { display: flex; flex-direction: column; border: 1px solid #2f8f61 !important; border-radius: 8px !important; }
-.fashion-card img { display: block; flex: 1 1 auto; min-height: 0; height: auto; object-fit: contain; }
-.card-shade { display: none !important; }
-.card-caption { position: static; flex: 0 0 auto; padding: 15px 18px; background-color: #000000 !important; border-top: 1px solid #2f8f61 !important; }
-.card-caption > span { padding: 0; backdrop-filter: none; }
-.card-caption h2 { margin-top: 4px; }
-.card-caption p { margin: 4px 0 0; }
-.stamp-like, .stamp-no { background-color: #000000 !important; color: #2f8f61 !important; }
+/* Results use one dark hero and light content surfaces. */
+.result-hero { overflow: hidden; background: var(--ink); color: var(--white); border: 1px solid #315c4c; border-radius: 30px; box-shadow: 0 16px 40px rgba(25, 63, 52, .12); }
+.result-hero :is(h1, h2, h3, b, strong) { color: var(--white); }
+.result-hero .eyebrow, .result-hero .result-kicker { color: #c2d8be; }
+.result-hero .tag-row span, .result-hero .style-type-row > div, .result-hero .profile-summary > span { border-color: rgba(255, 252, 245, .24); color: var(--white); }
+.result-photo-stack::before { content: "K."; position: absolute; inset: -45px 0 auto auto; color: #d4e1d0; opacity: .15; font-family: var(--font-display); font-size: clamp(190px, 22vw, 300px); font-weight: 800; letter-spacing: -.12em; line-height: 1; pointer-events: none; }
+.result-photo-stack > span { background: var(--white); color: var(--ink); border: 1px solid var(--line); }
+.result-panel, .store-section { background: #fffdf7; }
+.shop-section { background: #e9ecdf; border-color: #d2dccf; }
+.product-card { background: var(--white); }
+.product-index { background: #e1eadc; color: var(--ink); }
+.product-tags span, .profile-summary > span { background: #e9eee5; color: var(--ink); border-radius: 99px; }
+.recommendation-feedback button { border: 1px solid var(--line); border-radius: 10px; }
+.recommendation-feedback button[aria-pressed="true"], .recommendation-feedback button:first-child { background: var(--ink); color: var(--white); }
+.discover-invite { background: #e9eee3; border-color: #d6dfd0; }
+.store-card.is-selected { border-color: #7da28a; background: #eff3e9; }
+.style-score { background: #f4f5ed; }
+.analysis-insights article { background: #eef2e9; }
+.taste-counts > div { background: #e7ece2; }
+.taste-liked-card > img, .style-feed-card img { background: #e8e9df; }
+.sheet-dialog { color: var(--ink); }
+.sheet-dialog::backdrop { background: rgba(20, 43, 34, .55); backdrop-filter: blur(5px); }
+.map-panel iframe { border-top: 1px solid var(--line); }
+.map-panel > div { color: var(--ink); }
 
-.tag-row span, .style-type-row > div, .product-tags span,
-.recommendation-feedback button, .profile-summary > span { border: 1px solid #2f8f61 !important; border-radius: 8px !important; }
-.style-feed-card img { border-bottom: 1px solid #2f8f61 !important; }
-.result-photo-stack > span { background-color: #000000 !important; border: 1px solid #2f8f61 !important; }
-.map-panel iframe { border-top: 1px solid #2f8f61 !important; }
-.sheet-dialog::backdrop { background: #000000 !important; backdrop-filter: none; }
-
-@media (max-width: 800px) {
-  .home-screen { gap: 24px; }
-  .home-collage { height: 340px; }
-  .card-stage { height: clamp(420px, 62svh, 620px); }
-  .result-hero { gap: 24px; }
-}
-
-/* Result-based discoveries use only previously unseen outfit photographs. */
+/* The long running photo feed and wardrobe share the same card language. */
 .favorite-discovery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin: 24px 0; }
-.favorite-discovery-card { overflow: hidden; border: 1px solid #2f8f61; border-radius: 8px; background: #000; }
+.favorite-discovery-card { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--white); box-shadow: 0 8px 24px rgba(25, 63, 52, .08); }
 .favorite-discovery-card img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
-.favorite-discovery-card span { display: block; padding: 10px 12px; color: #f7f5ed; font-size: 13px; }
-.bottom-nav button[data-route="saved"] small { font-size: 10px; white-space: nowrap; }
-@media (max-width: 600px) { .favorite-discovery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; } .favorite-discovery-card span { font-size: 11px; padding: 8px; } }
-
-/* Installed app: account sign-in before the diagnosis UI. */
-#appAuthGate { display: none; }
-.auth-required:not(.auth-unlocked) .app-shell { display: none !important; }
-.auth-required #appAuthGate { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
-.auth-required.auth-unlocked #appAuthGate { display: none !important; }
-.app-auth-card { width: min(100%, 420px); display: grid; gap: 18px; }
-.app-auth-card h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); }
-.app-auth-card p { margin: 0; line-height: 1.6; }
-.app-auth-card form { display: grid; gap: 14px; }
-.app-auth-card form[hidden] { display: none !important; }
-.app-auth-card label { display: grid; gap: 6px; }
-.app-auth-card input { width: 100%; padding: 14px; border: 1px solid #2f8f61; border-radius: 8px; color: #2f8f61; background: #000; }
-.app-auth-card button { width: 100%; justify-content: center; }
-
-/* Ongoing photo feed and local wardrobe. */
+.favorite-discovery-card span { display: block; padding: 10px 12px; color: var(--ink); font-size: 13px; }
 .fresh-feed-toolbar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 20px 0; }
 .fresh-feed-toolbar .secondary-button { width: auto; }
-.fresh-wardrobe-filter, .wardrobe-field input, .wardrobe-field select {
-  min-height: 44px; padding: 10px 12px; border: 1px solid #2f8f61;
-  border-radius: 8px; background: #000; color: #2f8f61; font: inherit;
-}
+.fresh-wardrobe-filter, .wardrobe-field input, .wardrobe-field select { min-height: 44px; padding: 10px 12px; font: inherit; }
 .fresh-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
-.fresh-feed-card, .wardrobe-card, .wardrobe-form {
-  border: 1px solid #2f8f61; border-radius: 8px; background: #000;
-}
 .fresh-feed-card { overflow: hidden; }
 .fresh-feed-card > img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; }
-.fresh-feed-card-content { display: grid; gap: 10px; padding: 12px; border-top: 1px solid #2f8f61; }
+.fresh-feed-card-content { display: grid; gap: 10px; padding: 12px; border-top: 1px solid var(--line); }
 .fresh-feed-style { font-size: 13px; }
 .fresh-feed-actions, .fresh-feed-shops { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .fresh-feed-actions button { min-height: 38px; padding: 8px 12px; font-size: 13px; }
-.fresh-feed-shops { padding-top: 8px; border-top: 1px solid #2f8f61; }
+.fresh-feed-shops { padding-top: 8px; border-top: 1px solid var(--line); }
 .fresh-feed-shops small { flex-basis: 100%; }
-.fresh-feed-shops a { padding: 7px 10px; border: 1px solid #2f8f61; border-radius: 8px; font-size: 12px; text-decoration: none; }
+.fresh-feed-shops a { padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); font-size: 12px; text-decoration: none; }
 .fresh-feed-status { margin: 20px 0 12px; }
 .fresh-feed-more[hidden] { display: none !important; }
 .wardrobe-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 18px; margin: 20px 0 32px; }
@@ -144,13 +151,36 @@ input::placeholder { color: #2f8f61; opacity: 1; }
 .wardrobe-form > button, .wardrobe-form > p { align-self: end; }
 .wardrobe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-top: 16px; }
 .wardrobe-card { display: grid; gap: 8px; padding: 10px; }
-.wardrobe-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.wardrobe-card img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 12px; }
 .wardrobe-card button { width: 100%; justify-content: center; }
+
+/* Account gate remains legible in the installed app. */
+#appAuthGate { display: none; }
+.auth-required:not(.auth-unlocked) .app-shell { display: none !important; }
+.auth-required #appAuthGate { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.auth-required.auth-unlocked #appAuthGate { display: none !important; }
+.app-auth-card { width: min(100%, 420px); display: grid; gap: 18px; padding: 30px; border: 1px solid var(--line); border-radius: 24px; background: var(--white); box-shadow: 0 22px 48px rgba(25, 63, 52, .1); }
+.app-auth-card h1 { margin: 0; font-size: clamp(2rem, 7vw, 3rem); }
+.app-auth-card p { margin: 0; line-height: 1.6; }
+.app-auth-card form { display: grid; gap: 14px; }
+.app-auth-card form[hidden] { display: none !important; }
+.app-auth-card label { display: grid; gap: 6px; }
+.app-auth-card input { width: 100%; padding: 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: #fffdf8; }
+.app-auth-card button { width: 100%; justify-content: center; }
+
+@media (max-width: 800px) {
+  .topbar, .bottom-nav { backdrop-filter: none; background: var(--white); }
+  .home-screen { gap: 24px; }
+  .home-collage { height: 340px; }
+  .card-stage { height: clamp(420px, 62svh, 620px); }
+  .result-hero { gap: 24px; }
+}
 @media (max-width: 600px) {
-  .fresh-feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
-  .fresh-feed-card-content { padding: 9px; }
+  .favorite-discovery-grid, .fresh-feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+  .favorite-discovery-card span, .fresh-feed-card-content { padding: 9px; }
   .fresh-feed-actions button { flex: 1 1 100%; }
   .wardrobe-form { grid-template-columns: 1fr; }
+  .bottom-nav button small { font-size: 8px; }
 }
-
-.fresh-feed-refresh[hidden] { display: none !important; }
+@media (hover: none) { .brand-directory-card:hover, .brand-photo-card:hover { transform: none; box-shadow: 0 9px 24px rgba(25, 63, 52, .05); } }
+@media (prefers-reduced-motion: reduce) { button, .card-active { transition: none; } }

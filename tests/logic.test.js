@@ -3,12 +3,25 @@ const assert = require("node:assert/strict");
 const {
   calculateProfile,
   rankStylePreferences,
+  rankAnsweredStyles,
   selectRecommendations,
   selectPersonalizedLooks,
   filterCardsByAudience,
   selectProductRecommendations,
   selectShopRecommendations
 } = require("../logic.js");
+
+test('結果の割合は実際に判断した写真だけを分母にする', () => {
+  const photos = ['a', 'b', 'c', 'd'].map((id) => ({ id, audience: 'men',
+    styleId: 'men_trad', category: 'トラッド' }));
+  const ranked = rankAnsweredStyles(photos, [
+    { id: 'a', choice: 'like' }, { id: 'b', choice: 'like' },
+    { id: 'c', choice: 'no' }, { id: 'd', choice: 'skip' }
+  ], 'men');
+  assert.equal(ranked[0].likes, 2);
+  assert.equal(ranked[0].answered, 3);
+  assert.equal(ranked[0].percentage, 67);
+});
 
 const cards = [
   { id: "a", tags: ["ミニマル", "モノトーン"] },

@@ -1,0 +1,26 @@
+.brand-feed-screen { max-width: 1160px; margin: 0 auto; padding: 34px clamp(16px, 4vw, 48px) 130px; animation: explore-enter .2s ease-out; }
+.brand-feed-screen .page-heading { margin: 0 0 24px; }
+.brand-feed-screen .page-heading .eyebrow { margin: 0 0 7px; font-size: 10px; letter-spacing: .18em; }
+.brand-feed-screen .page-heading h1 { margin: 0; font-family: var(--font-ui); font-size: clamp(30px, 4vw, 46px); font-weight: 760; line-height: 1.25; letter-spacing: -.06em; }
+.brand-feed-screen .explore-switch { margin-bottom: 35px; }
+.brand-feed-count { margin: 0 0 17px; color: #7c837d; font-size: 11px; line-height: 1.4; }
+.brand-feed-count:empty { display: none; }
+.brand-feed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(225px, 1fr)); gap: 24px 14px; }
+.brand-photo-card { min-width: 0; }
+.brand-photo-card a { display: block; color: inherit; text-decoration: none; }
+.brand-photo-card img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 13px; background: #e7e8e3; transition: filter .18s ease; }
+.brand-photo-card a:hover img { filter: brightness(.94); }
+.brand-photo-copy { display: grid; gap: 3px; padding: 9px 1px 0; }
+.brand-photo-copy strong { overflow: hidden; color: #232b25; font-size: 12px; font-weight: 760; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.brand-photo-copy span { display: -webkit-box; overflow: hidden; color: #6e7770; font-size: 11px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 1; }
+.brand-feed-more { display: block; margin: 28px auto 0; }
+.brand-feed-more[hidden] { display: none; }
+@keyframes explore-enter { from { opacity: .65; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) {
+  .brand-feed-screen { padding-top: 24px; }
+  .brand-feed-screen .page-heading { margin-bottom: 20px; }
+  .brand-feed-screen .explore-switch { max-width: none; margin-bottom: 27px; }
+  .brand-feed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 9px; }
+  .brand-photo-card img { border-radius: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .brand-feed-screen { animation: none; } .brand-photo-card img { transition: none; } }

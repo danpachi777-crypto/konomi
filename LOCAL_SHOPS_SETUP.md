@@ -1,25 +1,18 @@
-# 地域の服屋・口コミ検索
+# 無料の古着屋リサーチ
 
-通常のブランド提案・コーデ提案はキーなしで動作します。Google Mapsの店舗・口コミを調べる機能は、Google Places API (New) のAPIキーをサーバー側に設定すると動作します。
+マップ画面はAPIキーなしで動きます。初期表示の「あなた向け」は、診断で好きと答えた上位3系統と店舗タグが一致する店だけを自動表示します。利用者が選んだ街を初期値にし、街と服の系統は後から切り替えられます。合う店の根拠がない場合は候補を捏造せず、全系統から探せます。
 
-1. Google CloudでPlaces API (New)を有効化し、課金・利用上限とキーのAPI制限を設定します。
-2. ローカルのPowerShellで環境変数を設定し、サーバーを起動します。キーはチャットに貼らず、ブラウザのコードにも入れないでください。
+2026-10-13に確認した掲載候補は計276店です。
 
-```powershell
-$env:GOOGLE_PLACES_API_KEY = '自分のAPIキー'
-npm.cmd start
-```
+| 地域 | 掲載候補 | 主な調査元 |
+| --- | ---: | --- |
+| 下北沢 | 163店 | [シモフルの店舗一覧](https://shimofuru.jp/shoplist/)と各店舗の紹介ページ |
+| 高円寺 | 35店 | [高円寺の店舗ガイド](https://avend.co.jp/column/kouennji_recommend/) |
+| 原宿 | 38店 | [原宿の店舗ガイド](https://avend.co.jp/column/harajuku_recommend/) |
+| 吉祥寺 | 40店 | [吉祥寺の店舗ガイド](https://avend.co.jp/column/kichijyouji_recommend/) |
 
-サーバー起動時にこの変数が設定されている必要があります。既に起動しているサーバーには後から反映されません。
+各候補には掲載元URLと確認日を保存しています。系統タグは公開プロフィールの説明・ジャンルから作った目安で、説明が足りない店は系統未確認と表示します。掲載元の情報が古い場合、移転・閉店・取扱変更の可能性があります。全店の営業状況や店頭在庫を確認済みという意味ではありません。
 
-結果画面の「近くの服屋を口コミから調べる」で検索します。エリアと好みの特徴だけをGoogleへ送信し、ニックネームや年代、診断履歴は送信しません。1回の検索はText Search最大2回、Place Details最大6回です。利用料金はGoogleのプラン・フィールドによります。
+Googleマップの口コミは一括取得・保存していません。5店については、Google由来と明記された公開口コミの転載を個別に読み、服の傾向や掲載情報との食い違いを短く要約しました。対象と参照先は `shop-review-audit.js` に記録しています。それ以外の店は「口コミ未調査」と表示します。各店舗の「地図・口コミを見る」から公開ページを確認できます。
 
-取得できる口コミは全口コミではありません。服の特徴の言及を参考として取り出しますが、現在の在庫・品ぞろえ・個人経営かどうかを確定する情報としては扱いません。閉店情報が返った店舗は除外します。Google Mapsの評価・口コミ原文・投稿者・原文へのリンクを表示します。口コミはメモリ内だけで扱い、サービスワーカーや端末の保存領域に保存しません。
-
-現在、キー未設定の場合は明確に「未接続」と表示し、公式の取り扱い情報を参考にした候補を表示します。公式掲載ブランドと診断の相性は、アプリが選んだ服との共通点から推定したものです。
-
-公式資料:
-
-- [Text Search (New)](https://developers.google.com/maps/documentation/places/web-service/text-search)
-- [Place Details (New)](https://developers.google.com/maps/documentation/places/web-service/place-details)
-- [Google Placesの表示・出典ポリシー](https://developers.google.com/maps/documentation/places/web-service/policies)
+登録データは `free-shop-directory.js` です。公開情報を再確認する場合は `node scripts/research-shimofuru.cjs` の後に `node scripts/build-free-shop-directory.cjs` を実行し、生成結果を人手で確認してください。広域ガイドの表現や店舗数が変わると生成スクリプトの検査が失敗するため、その場合は掲載元を読み直して修正します。

@@ -73,7 +73,8 @@ http.createServer(async (request, response) => {
     if (request.headers.origin && !["http://127.0.0.1:" + port, "http://localhost:" + port].includes(request.headers.origin)) {
       return sendJson(response, 403, { error: "Origin not allowed" });
     }
-    if (!process.env.GOOGLE_PLACES_API_KEY) return sendJson(response, 200, { status: "unconfigured", shops: [] });
+    if (!process.env.GOOGLE_PLACES_API_KEY) return sendJson(response, 200,
+      { status: "unconfigured", shops: [], embedKey: process.env.GOOGLE_MAPS_EMBED_API_KEY || "" });
     if (placesBusy || Date.now() - lastSearchAt < 10000) {
       return sendJson(response, 429, { error: "少し待ってから検索してください。" });
     }
@@ -86,7 +87,8 @@ http.createServer(async (request, response) => {
         if (Buffer.byteLength(body) > 4096) throw new Error("検索条件が長すぎます。");
       }
       const input = JSON.parse(body);
-      return sendJson(response, 200, await discoverShops(input, { apiKey: process.env.GOOGLE_PLACES_API_KEY }));
+      const result = await discoverShops(input, { apiKey: process.env.GOOGLE_PLACES_API_KEY });
+      return sendJson(response, 200, { ...result, embedKey: process.env.GOOGLE_MAPS_EMBED_API_KEY || "" });
     } catch (error) {
       return sendJson(response, 502, { error: error instanceof SyntaxError ? "検索条件が不正です。" : error.message });
     } finally {

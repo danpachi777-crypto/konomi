@@ -3,50 +3,43 @@
   const count = document.getElementById('photoCount');
   const error = document.getElementById('creditsError');
   try {
-    const [stockResponse, generatedResponse] = await Promise.all([
-      fetch('assets/photo-sources.json', { cache: 'no-cache' }),
-      fetch('assets/generated-photo-sources.json', { cache: 'no-cache' })
+    const responses = await Promise.all([
+      fetch('assets/brand-photos.json'), fetch('assets/vintage-brand-photos.json')
     ]);
-    if (!stockResponse.ok || !generatedResponse.ok) throw new Error('写真台帳を読み込めません');
-    const [stock, generated] = await Promise.all([stockResponse.json(), generatedResponse.json()]);
-    count.textContent = `${stock.items.length + generated.items.length}枚（実写${stock.items.length}枚・AI生成${generated.items.length}枚）`;
-    for (const item of [...stock.items, ...generated.items]) {
+    if (responses.some((response) => !response.ok)) throw new Error('写真の掲載元を読み込めません');
+    const catalogs = await Promise.all(responses.map((response) => response.json()));
+    const total = catalogs.reduce((sum, catalog) => sum + catalog.sources.reduce((n, source) =>
+      n + (source.photos?.length || 0), 0), 0);
+    count.textContent = `${total.toLocaleString('ja-JP')}枚 · 94ブランド`;
+    for (const [index, catalog] of catalogs.entries()) for (const source of catalog.sources) {
+      if (!source.photos?.length) continue;
+      const photo = source.photos[0];
       const card = document.createElement('article');
       card.className = 'credit-card';
       const image = document.createElement('img');
-      image.src = item.localPath;
-      image.alt = item.description;
+      image.src = photo.image;
+      image.alt = `${source.brand}の服`;
       image.loading = 'lazy';
       const copy = document.createElement('div');
       copy.className = 'credit-copy';
       const kind = document.createElement('p');
       kind.className = 'credit-kind';
-      kind.textContent = `診断・結果候補 · ${item.audience === 'men' ? 'メンズ' : 'ウィメンズ'} · ${item.generated ? 'AI生成' : '実写'}`;
-      const description = document.createElement('p');
-      description.className = 'credit-description';
-      description.textContent = item.description;
+      kind.textContent = index === 0 ? 'ブランド・取扱店' : 'ブランド古着店';
+      const title = document.createElement('p');
+      title.className = 'credit-description';
+      title.textContent = source.brand;
       const meta = document.createElement('p');
       meta.className = 'credit-meta';
-      meta.textContent = item.generated ? 'OpenAI imagegen · 架空の人物・場所' : `Photo: ${item.creator} · ${item.category}`;
-      copy.append(kind, description, meta);
-      if (item.generated) {
-        const source = document.createElement('p');
-        source.className = 'credit-meta';
-        source.textContent = `元画像: ${item.sourceSheet} / ${item.tile}番目`;
-        copy.append(source);
-      } else {
-        const links = document.createElement('div');
-        links.className = 'credit-links';
-        for (const [label, href] of [['原典を見る', item.sourcePage], [item.license, item.licenseUrl]]) {
-          const link = document.createElement('a');
-          link.textContent = label;
-          link.href = href;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          links.append(link);
-        }
-        copy.append(links);
-      }
+      meta.textContent = `${source.photos.length}枚 · ${index === 0 ? '登録済み写真' : photo.seller}`;
+      const links = document.createElement('div');
+      links.className = 'credit-links';
+      const link = document.createElement('a');
+      link.href = photo.url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = '掲載ページを見る ↗';
+      links.append(link);
+      copy.append(kind, title, meta, links);
       card.append(image, copy);
       grid.append(card);
     }

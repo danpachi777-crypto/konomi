@@ -65,7 +65,7 @@ function appHarness() {
     querySelectorAll(selector) { return selector.includes("input[data-feature]:checked") ? selectedDetails : []; },
     querySelector() { return node(); } };
   const context = vm.createContext({
-    window: { KONOMI_CARDS: cards, KONOMI_RECOMMENDATIONS: recommendations, KONOMI_PRODUCTS: brands,
+    window: { KONOMI_CARDS: cards, KONOMI_RECOMMENDATIONS: [...recommendations], KONOMI_PRODUCTS: brands,
       KONOMI_SHOPS: [], KonomiLogic: logic, KonomiDiagnosisPool: require('../diagnosis-pool.js'), setTimeout() {} },
     document, location: { search: "?demo=result", protocol: "http:" }, navigator: {},
     localStorage: { getItem() { return null; }, setItem() {} }, URLSearchParams, URL, setTimeout() {}, clearTimeout() {}
@@ -73,9 +73,17 @@ function appHarness() {
   const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8").replace(/\nrender\(\);\s*$/, "");
   vm.runInContext(source, context);
   const evaluate = (expression) => vm.runInContext(expression, context);
-  evaluate("state.diagnosisIds = cards.filter(card => card.audience === 'men' && card.phase === 'initial').map(card => card.id)");
+  evaluate("state.diagnosisIds = cards.filter(card => card.audience === 'men' && card.phase === 'initial').map(card => card.id); state.likedIds = [state.diagnosisIds[0]]; state.history = state.diagnosisIds.map(id => ({ id, choice: state.likedIds.includes(id) ? 'like' : 'skip' }))");
   return { evaluate, selectedDetails, elements };
 }
+
+test('結果画面は診断回答から好きな枚数と割合を表示する', () => {
+  const app = appHarness();
+  app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; renderResult()");
+  const html = app.elements.get('app').innerHTML;
+  assert.match(html, /好き 1\/1枚（100%）/);
+  assert.doesNotMatch(html, /件のlike/);
+});
 
 test("診断をやり直すと保存した対象設定のまま1枚目から再開する", () => {
   const app = appHarness();
@@ -169,13 +177,50 @@ test("結果画面の提案への回答を分析に加え、別の候補に更�
   assert.equal(app.evaluate("state.recommendationHistory.length"), 1);
 });
 
-test("追加診断の終了画面で今回の分析と専門ブランドの具体的な発見を提示する", () => {
+test("追加診断の終了画面で分析とブランドが一致する写真付きの候補を提示する", () => {
   const app = appHarness();
   app.evaluate("startRefinementRound(false, false)");
   for (let index = 0; index < 6; index++) app.evaluate("recordRecommendationChoice('like')");
+  app.evaluate(`(() => {
+    const inputs = recommendationInputs();
+    const product = selectDiscoveryRecommendations(products, inputs.cards, inputs.likedIds,
+      state.profile.gender, state.profile.budget, state.productFeedback, products.length)[0];
+    recommendations.push({ id: 'matching-photo', brand: product.brand, image: 'https://example.com/photo.jpg',
+      sourceUrl: 'https://example.com/source', audience: 'men', tags: product.tags });
+    recommendations.push({ id: 'wrong-brand-photo', brand: '別ブランド', image: 'https://example.com/wrong.jpg',
+      sourceUrl: 'https://example.com/wrong', audience: 'men', tags: product.tags });
+    renderDiscoverComplete(currentRoundLooks(), calculateProfile(diagnosisCards(), state.likedIds));
+  })()`);
   const html = app.elements.get('app').innerHTML;
+  assert.ok(html.includes('Your Likes'));
+  assert.equal(html.includes('追加診断 ROUND'), false);
+  assert.equal(html.includes('好みを更新しました'), false);
+  assert.ok(html.includes('次の服を見る'));
   assert.ok(html.includes('今回の回答から、見えてきたこと。'));
   assert.ok(html.includes('今回の判断できた6着のうち、6着が好き。'));
-  assert.ok(html.includes('この診断から、新しく見てほしい服。'));
+  assert.ok(html.includes('次に見たい服'));
+  assert.ok(html.includes('class="round-product-photo"'));
+  assert.ok(html.includes('https://example.com/photo.jpg'));
+  assert.equal(html.includes('https://example.com/wrong.jpg'), false);
+  assert.ok(html.includes('写真は参考'));
+  assert.equal(html.includes('discovery-experiment'), false);
   assert.ok(html.includes('data-round-product='));
+});
+
+test("参考写真は対象が不明なモデルを避け、確認できる服の写真を使う", () => {
+  const app = appHarness();
+  const selected = app.evaluate(`(() => {
+    window.KonomiPhotoAudience = { audienceFor(photo) { return photo.audience || null; } };
+    const catalog = { sources: [
+      { brand: 'COS', photos: [
+        { image: 'https://example.com/unknown.jpg', url: 'https://example.com/unknown', sourceType: 'product', personVerified: true },
+        { image: 'https://example.com/men.jpg', url: 'https://example.com/men', sourceType: 'product', personVerified: true, audience: 'men' }
+      ] },
+      { brand: 'YAECA', photos: [
+        { image: 'https://example.com/shirt.jpg', url: 'https://example.com/shirt', sourceType: 'product' }
+      ] }
+    ] };
+    return JSON.stringify(roundCatalogPhotos(catalog).map((photo) => photo.image));
+  })()`);
+  assert.deepEqual(JSON.parse(selected), ['https://example.com/men.jpg', 'https://example.com/shirt.jpg']);
 });

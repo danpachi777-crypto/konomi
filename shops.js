@@ -88,6 +88,7 @@
       officialUrl: "https://www.flamingo-online.jp/f/shoplist", sourceLabel: "公式の取り扱い・店舗情報", checkedAt: "2026-10-06"
     }
   ];
+  window.KONOMI_SHOPS.push(...(window.KONOMI_FREE_SHOPS || []));
   window.KONOMI_SHOPS.forEach((shop) => {
     shop.sourceLabel ||= "公式サイトを案内するブランド候補";
     shop.reviewStatus = "not-fetched";
