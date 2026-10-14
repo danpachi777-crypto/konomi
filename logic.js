@@ -118,11 +118,17 @@
   }
 
   function rankAnsweredStyles(cards, history, audience = "all") {
-    const byId = new Map(cards.map((card) => [card.id, card]));
-    const latest = new Map(history.map((entry) => [entry.id, entry.choice]));
+    const canonicalId = (id) => String(id || '').replace(/^r-/, '');
+    const byId = new Map(cards.map((card) => [canonicalId(card.id), card]));
+    const latest = new Map();
+    for (const entry of history) {
+      // A later skip leaves the last actual opinion intact. The r- alias is
+      // the same photo when it reappears in a recommendation round.
+      if (entry.choice === 'like' || entry.choice === 'no')
+        latest.set(canonicalId(entry.id), entry.choice);
+    }
     const counts = new Map();
     for (const [id, choice] of latest) {
-      if (choice !== 'like' && choice !== 'no') continue;
       const card = byId.get(id);
       if (!card?.styleId || (audience !== 'all' && card.audience !== audience)) continue;
       const entry = counts.get(card.styleId) || { id: card.styleId, name: card.category, audience: card.audience,
@@ -131,10 +137,34 @@
       counts.set(card.styleId, entry);
     }
     return [...counts.values()].filter((entry) => entry.likes > 0)
-      .map((entry) => ({ ...entry, answered: entry.likes + entry.dislikes,
-        percentage: Math.round(entry.likes / (entry.likes + entry.dislikes) * 100),
-        score: entry.likes * 2 - entry.dislikes }))
-      .sort((a, b) => b.score - a.score || b.likes - a.likes || a.name.localeCompare(b.name, 'ja'));
+      .map((entry) => {
+        const answered = entry.likes + entry.dislikes;
+        const adjustedRate = (entry.likes + 1) / (answered + 2);
+        return { ...entry, answered,
+          percentage: Math.round(entry.likes / answered * 100),
+          // Favour a supported positive signal without treating 1/1 as certainty.
+          weight: (Math.max(0, adjustedRate - 0.5) + 0.04) * answered / (answered + 2),
+          score: entry.likes * 2 - entry.dislikes };
+      })
+      .sort((a, b) => b.weight - a.weight || b.likes - a.likes || a.name.localeCompare(b.name, 'ja'));
+  }
+
+  function selectStyleWeightedLooks(candidates, styles, shownStyleIds = [], limit = 6) {
+    const active = styles.filter((style) => style.score > 0 && style.weight > 0);
+    const groups = new Map(active.map((style) => [style.id, []]));
+    for (const candidate of candidates) groups.get(candidate.styleId)?.push(candidate);
+    const shown = new Map(active.map((style) => [style.id,
+      shownStyleIds.filter((id) => id === style.id).length]));
+    const selected = [];
+    while (selected.length < limit) {
+      const nextStyle = active.filter((style) => groups.get(style.id).length)
+        .sort((a, b) => (shown.get(a.id) + 1) / a.weight -
+          (shown.get(b.id) + 1) / b.weight || b.weight - a.weight)[0];
+      if (!nextStyle) break;
+      selected.push(groups.get(nextStyle.id).shift());
+      shown.set(nextStyle.id, shown.get(nextStyle.id) + 1);
+    }
+    return selected;
   }
 
   function rankTags(scores) {
@@ -310,7 +340,8 @@
           const weights = SHOP_STYLE_TAGS[style.id] || {};
           const tags = (shop.tags || []).filter((tag) => (weights[tag] || 0) >= 3);
           if (!tags.length) return [];
-          const score = tags.reduce((sum, tag) => sum + weights[tag], 0) * (3 - index);
+          const score = tags.reduce((sum, tag) => sum + weights[tag], 0) *
+            (style.weight ?? (3 - index));
           return [{ style: style.name, tags, score }];
         });
         const matchScore = styleMatches.reduce((sum, match) => sum + match.score, 0);
@@ -451,6 +482,7 @@
     countCategories,
     rankStylePreferences,
     rankAnsweredStyles,
+    selectStyleWeightedLooks,
     rankTags,
     getArchetype,
     rankArchetypes,

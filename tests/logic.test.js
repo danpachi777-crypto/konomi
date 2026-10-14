@@ -4,6 +4,7 @@ const {
   calculateProfile,
   rankStylePreferences,
   rankAnsweredStyles,
+  selectStyleWeightedLooks,
   selectRecommendations,
   selectPersonalizedLooks,
   filterCardsByAudience,
@@ -21,6 +22,28 @@ test('結果の割合は実際に判断した写真だけを分母にする', ()
   assert.equal(ranked[0].likes, 2);
   assert.equal(ranked[0].answered, 3);
   assert.equal(ranked[0].percentage, 67);
+});
+
+test('系統の候補配分は割合と回答数を使い、再表示した写真を二重に数えない', () => {
+  const photos = [...Array.from({ length: 10 }, (_, index) => ({ id: `a${index}`,
+    audience: 'men', styleId: 'a', category: 'A' })),
+  { id: 'b0', audience: 'men', styleId: 'b', category: 'B' }];
+  const history = photos.map((photo, index) => ({ id: photo.id, choice: index < 8 || index === 10 ? 'like' : 'no' }));
+  history.push({ id: 'r-a0', choice: 'skip' });
+  const styles = rankAnsweredStyles(photos, history, 'men');
+  assert.equal(styles[0].id, 'a');
+  assert.equal(styles[0].percentage, 80);
+  assert.equal(styles[0].answered, 10);
+  assert.equal(styles[1].percentage, 100);
+  assert.equal(styles[1].answered, 1);
+  assert.ok(styles[0].weight > styles[1].weight);
+  const candidates = [...Array.from({ length: 8 }, (_, index) => ({ id: `look-a${index}`, styleId: 'a' })),
+    ...Array.from({ length: 8 }, (_, index) => ({ id: `look-b${index}`, styleId: 'b' }))];
+  const selected = selectStyleWeightedLooks(candidates, styles, [], 6);
+  assert.equal(selected.length, 6);
+  assert.ok(selected.filter((look) => look.styleId === 'a').length >
+    selected.filter((look) => look.styleId === 'b').length);
+  assert.equal(new Set(selected.map((look) => look.id)).size, 6);
 });
 
 const cards = [

@@ -19,6 +19,9 @@
   --font-display: var(--font-ui);
 }
 
+/* Use the same variable font shape as the Your Likes heading across the app. */
+:where(*, *::before, *::after) { font-variation-settings: "wght" 780 !important; }
+
 body { font-family: var(--font-ui); font-weight: 400; letter-spacing: .005em; }
 button, input, select, textarea { font-family: inherit; }
 h1, h2, h3 { font-family: var(--font-display); font-style: normal; }

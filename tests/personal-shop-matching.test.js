@@ -29,3 +29,16 @@ test('好みの根拠がない場合や弱い場合は個別推薦を作らな�
   assert.deepEqual(selectPersonalShopRecommendations(shimokitazawa,
     [{ id: 'men_amekaji', name: 'アメカジ', likes: 1, score: 0 }], 'men'), []);
 });
+
+test('Shop の個別推薦は更新後の系統の重みで並び替わる', () => {
+  const shops = [
+    { id: 'trad', name: 'Trad', tags: ['きれいめ'], audiences: ['men'] },
+    { id: 'street', name: 'Street', tags: ['ストリート'], audiences: ['men'] }
+  ];
+  const styles = (trad, street) => [
+    { id: 'men_trad', name: 'トラッド', likes: 2, score: 3, weight: trad },
+    { id: 'men_street', name: 'ストリート', likes: 2, score: 3, weight: street }
+  ];
+  assert.equal(selectPersonalShopRecommendations(shops, styles(0.3, 0.1), 'men')[0].id, 'trad');
+  assert.equal(selectPersonalShopRecommendations(shops, styles(0.1, 0.3), 'men')[0].id, 'street');
+});

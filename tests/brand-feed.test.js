@@ -52,6 +52,22 @@ test('brand photos follow liked diagnosis styles and interleave brands', () => {
   assert.deepEqual(rankPhotos(sample, [], 'men'), []);
 });
 
+test('Picture feed changes its style mix when the result weights change', () => {
+  const photos = (prefix) => Array.from({ length: 10 }, (_, index) => ({
+    id: `${prefix}${index}`, image: `https://brand.example/${prefix}${index}.jpg`,
+    url: `https://brand.example/${prefix}${index}`, title: prefix, sourceType: 'product' }));
+  const sample = { sources: [
+    { brand: 'A', sourceUrl: 'https://a.example', styleIds: ['men_trad'], photos: photos('a') },
+    { brand: 'B', sourceUrl: 'https://b.example', styleIds: ['men_street'], photos: photos('b') }
+  ] };
+  const order = (trad, street) => rankPhotos(sample, [
+    { id: 'men_trad', name: 'トラッド', audience: 'men', score: trad },
+    { id: 'men_street', name: 'ストリート', audience: 'men', score: street }
+  ], 'men').slice(0, 6).map((item) => item.styleId);
+  assert.ok(order(0.7, 0.2).filter((id) => id === 'men_trad').length > 3);
+  assert.ok(order(0.2, 0.7).filter((id) => id === 'men_street').length > 3);
+});
+
 test('collector ignores metadata logos and non-clothing products', () => {
   const html = '<meta property="og:image" content="https://shop.example/logo.png">' +
     '<script type="application/ld+json">' + JSON.stringify({ '@graph': [

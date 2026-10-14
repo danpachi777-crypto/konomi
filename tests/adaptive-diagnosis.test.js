@@ -177,6 +177,63 @@ test("結果画面の提案への回答を分析に加え、別の候補に更�
   assert.equal(app.evaluate("state.recommendationHistory.length"), 1);
 });
 
+test('結果タブのスワイプ回答で割合と次の服が変わり、戻すと復元される', () => {
+  const app = appHarness();
+  app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; renderResult()");
+  const first = app.evaluate('resultStyleLooks()[0]');
+  assert.ok(first?.styleId);
+  assert.ok(app.elements.get('app').innerHTML.includes('id="resultSwipeCard"'));
+  const before = app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).percentage`);
+  app.evaluate(`recordResultChoice(${JSON.stringify(first.id)}, 'no')`);
+  assert.equal(app.evaluate("state.recommendationHistory.at(-1).source"), 'result');
+  assert.equal(app.evaluate('state.resultLastChange.before'), before);
+  assert.ok(app.evaluate('state.resultLastChange.after') < before);
+  assert.ok(Array.from(app.evaluate('resultStyleLooks()')).every((look) => look.id !== first.id));
+  assert.equal(app.evaluate('state.resultLastChange.nextLabel'), app.evaluate('resultStyleLooks()[0].label'));
+  assert.ok(app.elements.get('app').innerHTML.includes('result-swipe-change'));
+  app.evaluate('undoResultChoice()');
+  assert.equal(app.evaluate('state.recommendationHistory.length'), 0);
+  assert.equal(app.evaluate('state.resultLastChange'), null);
+  assert.equal(app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).percentage`), before);
+  assert.equal(app.evaluate('resultStyleLooks()[0].id'), first.id);
+});
+
+test('結果の保留は割合を変えず、Picture に渡す系統の重みは回答後に更新される', () => {
+  const app = appHarness();
+  app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; window.KonomiBrandFeed = { render({ styles }) { window.pictureStyles = styles; } }; renderSaved()");
+  const first = app.evaluate('resultStyleLooks()[0]');
+  const before = app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).weight`);
+  app.evaluate(`recordResultChoice(${JSON.stringify(first.id)}, 'skip')`);
+  assert.equal(app.evaluate('state.resultLastChange.before'), app.evaluate('state.resultLastChange.after'));
+  assert.equal(app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).weight`), before);
+  assert.ok(Array.from(app.evaluate('resultStyleLooks()')).every((look) => look.id !== first.id));
+  app.evaluate('undoResultChoice()');
+  app.evaluate(`recordResultChoice(${JSON.stringify(first.id)}, 'no'); renderSaved()`);
+  const after = app.evaluate(`window.pictureStyles.find(style => style.id === ${JSON.stringify(first.styleId)}).score`);
+  assert.ok(after < before);
+});
+
+test('結果カードを右へスワイプすると好きの回答として記録する', () => {
+  const app = appHarness();
+  const choice = app.evaluate(`(() => {
+    state.profile.gender = 'men'; state.route = 'result'; state.sessionCompleted = true;
+    const look = resultStyleLooks()[0];
+    const handlers = {};
+    const card = { dataset: { lookId: look.id }, style: { setProperty() {}, removeProperty() {} },
+      classList: { add() {}, contains() { return false; } },
+      addEventListener(type, handler) { handlers[type] = handler; }, setPointerCapture() {} };
+    app.querySelector = (selector) => selector === '#resultSwipeCard' ? card : null;
+    app.contains = () => true;
+    window.setTimeout = (callback) => callback();
+    setupResultSwipeGesture();
+    handlers.pointerdown({ clientX: 0, clientY: 0, pointerId: 1 });
+    handlers.pointermove({ clientX: 120, clientY: 0 });
+    handlers.pointerup({ clientX: 120, clientY: 0 });
+    return state.recommendationHistory.at(-1)?.choice;
+  })()`);
+  assert.equal(choice, 'like');
+});
+
 test("追加診断の終了画面で分析とブランドが一致する写真付きの候補を提示する", () => {
   const app = appHarness();
   app.evaluate("startRefinementRound(false, false)");

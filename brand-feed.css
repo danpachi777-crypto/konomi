@@ -1,7 +1,6 @@
 .brand-feed-screen { max-width: 1160px; margin: 0 auto; padding: 34px clamp(16px, 4vw, 48px) 130px; animation: explore-enter .2s ease-out; }
 .brand-feed-screen .page-heading { margin: 0 0 24px; }
-.brand-feed-screen .page-heading .eyebrow { margin: 0 0 7px; font-size: 10px; letter-spacing: .18em; }
-.brand-feed-screen .page-heading h1 { margin: 0; font-family: var(--font-ui); font-size: clamp(30px, 4vw, 46px); font-weight: 760; line-height: 1.25; letter-spacing: -.06em; }
+.brand-feed-screen .page-heading h1 { margin: 0; font-family: var(--font-ui); font-size: clamp(58px, 7.5vw, 104px); font-weight: 780; line-height: .98; letter-spacing: -.085em; white-space: nowrap; }
 .brand-feed-screen .explore-switch { margin-bottom: 35px; }
 .brand-feed-count { margin: 0 0 17px; color: #7c837d; font-size: 11px; line-height: 1.4; }
 .brand-feed-count:empty { display: none; }
@@ -16,6 +15,9 @@
 .brand-feed-more { display: block; margin: 28px auto 0; }
 .brand-feed-more[hidden] { display: none; }
 @keyframes explore-enter { from { opacity: .65; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 800px) {
+  .brand-feed-screen .page-heading h1 { font-size: clamp(52px, 13vw, 76px); }
+}
 @media (max-width: 600px) {
   .brand-feed-screen { padding-top: 24px; }
   .brand-feed-screen .page-heading { margin-bottom: 20px; }

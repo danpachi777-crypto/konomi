@@ -53,17 +53,30 @@
       const item = bucket.photos[index];
       if (!item || seen.has(item.photo.image)) continue;
       seen.add(item.photo.image);
-      ranked.push({ ...item.photo, audience: item.audience, brand: bucket.source.brand, style: item.style.name,
+      ranked.push({ ...item.photo, audience: item.audience, brand: bucket.source.brand,
+        style: item.style.name, styleId: item.style.id,
         sourceUrl: bucket.source.sourceUrl });
     }
-    return ranked;
+    const groups = new Map([...scores.keys()].map((id) => [id, []]));
+    for (const photo of ranked) groups.get(photo.styleId)?.push(photo);
+    const counts = new Map([...groups.keys()].map((id) => [id, 0]));
+    const ordered = [];
+    while (ordered.length < ranked.length) {
+      const next = [...scores.values()].filter((style) => groups.get(style.id).length)
+        .sort((a, b) => (counts.get(a.id) + 1) / a.score -
+          (counts.get(b.id) + 1) / b.score || b.score - a.score)[0];
+      if (!next) break;
+      ordered.push(groups.get(next.id).shift());
+      counts.set(next.id, counts.get(next.id) + 1);
+    }
+    return ordered;
   }
 
   function render({ app, state, styles, seenImages = [], setRoute, exploreSwitcherHTML = '' }) {
     app.innerHTML = '';
     const screen = document.createElement('section');
     screen.className = 'brand-feed-screen';
-    screen.innerHTML = '<div class="page-heading"><p class="eyebrow">DISCOVER</p><h1>好きな服に、出会う。</h1></div>' + exploreSwitcherHTML;
+    screen.innerHTML = '<div class="page-heading"><h1>LOOKS</h1></div>' + exploreSwitcherHTML;
     screen.querySelectorAll('.explore-switch [data-route]').forEach((button) => {
       button.addEventListener('click', () => setRoute(button.dataset.route));
     });
