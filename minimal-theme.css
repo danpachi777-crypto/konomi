@@ -58,7 +58,7 @@ button { touch-action: manipulation; transition: background-color .14s ease, tra
 .home-steps article { border-color: var(--line); }
 
 /* Forms and diagnosis cards. */
-.profile-form, .result-panel, .shop-section, .store-section, .diagnosis-analysis,
+.profile-form, .shop-section, .store-section, .diagnosis-analysis,
 .product-card, .store-card, .novel-look-card, .style-feed-card, .taste-liked-card,
 .style-score, .analysis-insights article, .sheet-dialog, .map-panel, .wardrobe-form,
 .wardrobe-card, .fresh-feed-card {
@@ -75,8 +75,8 @@ button { touch-action: manipulation; transition: background-color .14s ease, tra
 .field-group input[type="text"]:focus, .field-group select:focus { outline-color: rgba(142, 174, 146, .4); border-color: var(--accent); }
 .step-number { color: #aec4ad; opacity: 1; }
 .selection-note { color: var(--accent); }
-.progress-track, .meter { background: #e3e8da; border-radius: 99px; }
-.progress-track span, .meter i { background: var(--accent); }
+.progress-track { background: #e3e8da; border-radius: 99px; }
+.progress-track span { background: var(--accent); }
 .fashion-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 24px; background: var(--white); box-shadow: 0 16px 42px rgba(25, 63, 52, .12); }
 .card-active { transition: transform .16s ease-out, opacity .16s ease-out; }
 .card-active.is-dragging { transition: none; }
@@ -108,7 +108,7 @@ button { touch-action: manipulation; transition: background-color .14s ease, tra
 .result-hero .tag-row span, .result-hero .style-type-row > div, .result-hero .profile-summary > span { border-color: rgba(255, 252, 245, .24); color: var(--white); }
 .result-photo-stack::before { content: "K."; position: absolute; inset: -45px 0 auto auto; color: #d4e1d0; opacity: .15; font-family: var(--font-display); font-size: clamp(190px, 22vw, 300px); font-weight: 800; letter-spacing: -.12em; line-height: 1; pointer-events: none; }
 .result-photo-stack > span { background: var(--white); color: var(--ink); border: 1px solid var(--line); }
-.result-panel, .store-section { background: #fffdf7; }
+.store-section { background: #fffdf7; }
 .shop-section { background: #e9ecdf; border-color: #d2dccf; }
 .product-card { background: var(--white); }
 .product-index { background: #e1eadc; color: var(--ink); }

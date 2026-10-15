@@ -28,6 +28,6 @@
     summary: `${card.brand}の服の写真から、好みをもう少し比べられます。`
   }));
   const script = document.createElement('script');
-  script.src = 'app.js?v=56';
+  script.src = 'app.js?v=61';
   document.body.append(script);
 })();

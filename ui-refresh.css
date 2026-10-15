@@ -106,10 +106,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #729534; outline-offs
 .profile-summary { gap: 9px; }
 .profile-summary > span { border: 1px solid var(--line); background: white; border-radius: 8px; padding: 8px 12px; }
 .discover-invite { border-radius: 20px; background: #edf4df; border-color: #d9e4c8; }
-.result-panel { border-radius: 20px; background: white; box-shadow: none; }
-.result-panel h2, .section-title h2 { font-weight: 750; letter-spacing: -.035em; }
-.meter, .meter i { border-radius: 6px; height: 6px; }
-.meter i { background: #8bad52; }
+.section-title h2 { font-weight: 750; letter-spacing: -.035em; }
 .shop-section { background: #edf0e7; border: 1px solid var(--line); border-radius: 24px; }
 .shop-heading h2, .store-heading h2 { font-size: clamp(27px, 3vw, 38px); line-height: 1.45; font-weight: 750; }
 .product-card { border-color: var(--line); border-radius: 16px; padding: 22px; }
@@ -121,7 +118,7 @@ button:focus-visible, a:focus-visible { outline: 3px solid #729534; outline-offs
 .store-card { border-radius: 14px; background: #f8faf5; }
 .store-card.is-selected { box-shadow: none; border-color: #759d30; background: #f0f7e4; }
 .novel-look-card { border-color: var(--line); border-radius: 20px; box-shadow: none; }
-.novel-look-photo, .recommend-card img, .saved-card img { background: #ecefe7; }
+.novel-look-photo, .saved-card img { background: #ecefe7; }
 .novel-look-copy h3 { font-size: 17px; font-weight: 750; }
 .recommendation-feedback { flex-wrap: wrap; }
 .recommendation-feedback button { background: #f4f7ee; border-radius: 9px; padding: 9px 12px; font-size: 12px; }

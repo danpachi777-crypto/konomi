@@ -73,7 +73,7 @@ function appHarness() {
   const source = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8").replace(/\nrender\(\);\s*$/, "");
   vm.runInContext(source, context);
   const evaluate = (expression) => vm.runInContext(expression, context);
-  evaluate("state.diagnosisIds = cards.filter(card => card.audience === 'men' && card.phase === 'initial').map(card => card.id); state.likedIds = [state.diagnosisIds[0]]; state.history = state.diagnosisIds.map(id => ({ id, choice: state.likedIds.includes(id) ? 'like' : 'skip' }))");
+  evaluate("state.diagnosisIds = cards.filter(card => card.audience === 'men' && card.phase === 'initial').map(card => card.id); state.likedIds = [state.diagnosisIds[0]]; state.history = state.diagnosisIds.map(id => ({ id, choice: state.likedIds.includes(id) ? 'like' : 'skip' })); state.favoriteLooks = migrateFavoriteLooks(state)");
   return { evaluate, selectedDetails, elements };
 }
 
@@ -83,6 +83,22 @@ test('結果画面は診断回答から好きな枚数と割合を表示する',
   const html = app.elements.get('app').innerHTML;
   assert.match(html, /好き 1\/1枚（100%）/);
   assert.doesNotMatch(html, /件のlike/);
+});
+
+test('結果画面のLike一覧とおすすめ写真に同じ写真を繰り返さない', () => {
+  const app = appHarness();
+  app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; renderResult()");
+  const html = app.elements.get('app').innerHTML;
+  const hero = html.match(/<div class="result-photo-stack"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
+  const images = [
+    ...[...hero.matchAll(/<img[^>]+src="([^"]+)"/g)].map((match) => match[1]),
+    ...[...html.matchAll(/<article class="favorite-look-card">\s*<img src="([^"]+)"/g)].map((match) => match[1]),
+    ...[...html.matchAll(/<img class="novel-look-photo" src="([^"]+)"/g)].map((match) => match[1])
+  ].filter(Boolean);
+  assert.ok(images.length > 2);
+  assert.equal(new Set(images).size, images.length);
+  assert.doesNotMatch(html, /好きな系統を、もう少し絞る/);
+  assert.doesNotMatch(html, /class="recommend-section"/);
 });
 
 test("診断をやり直すと保存した対象設定のまま1枚目から再開する", () => {
@@ -172,66 +188,67 @@ test("結果画面の提案への回答を分析に加え、別の候補に更�
   assert.equal(app.evaluate("state.recommendationHistory[0].choice"), "like");
   assert.ok(app.evaluate("state.savedRecommendationIds").includes(first));
   assert.ok(Array.from(app.evaluate("personalizedLooks()")).every((look) => look.id !== first));
-  assert.ok(app.elements.get("app").innerHTML.includes("こういう服は、どうですか？"));
+  assert.doesNotMatch(app.elements.get("app").innerHTML, /BECAUSE YOU LIKED|こういう服は、どうですか？|novel-looks-section/);
   app.evaluate(`recordSuggestedLook(${JSON.stringify(first)}, 'like')`);
   assert.equal(app.evaluate("state.recommendationHistory.length"), 1);
 });
 
-test('結果タブのスワイプ回答で割合と次の服が変わり、戻すと復元される', () => {
+test('result shows the saved Like collection in place of the refinement swipe', () => {
+  const app = appHarness();
+  app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; renderResult()");
+  const html = app.elements.get('app').innerHTML;
+  assert.match(html, /favorite-looks/);
+  assert.match(html, /favorite-look-card/);
+  assert.doesNotMatch(html, /result-swipe/);
+});
+
+test('result previews only the newest Like and expands to the full collection', () => {
+  const app = appHarness();
+  app.evaluate(`state.favoriteLooks = [
+    { id: 'older', image: 'older.jpg', label: 'Older', savedAt: '2025-01-01T00:00:00.000Z' },
+    { id: 'newest', image: 'newest.jpg', label: 'Newest', savedAt: '2025-02-01T00:00:00.000Z' }
+  ]; renderResult()`);
+  const preview = app.elements.get('app').innerHTML;
+  assert.equal((preview.match(/class="favorite-look-card"/g) || []).length, 1);
+  assert.match(preview, /newest\.jpg/);
+  assert.doesNotMatch(preview, /older\.jpg/);
+  assert.match(preview, /詳しく見る/);
+  app.evaluate('favoriteExpanded = true; renderResult()');
+  const expanded = app.elements.get('app').innerHTML;
+  assert.equal((expanded.match(/class="favorite-look-card"/g) || []).length, 2);
+  assert.match(expanded, /older\.jpg/);
+  assert.match(expanded, /閉じる/);
+});
+
+test('existing diagnosis and recommendation Likes migrate into one photo collection', () => {
+  const app = appHarness();
+  const favorites = Array.from(app.evaluate(`(() => {
+    const recommended = recommendations.find((look) => look.image !== cards.find((card) => card.id === state.likedIds[0]).image);
+    return migrateFavoriteLooks({ likedIds: state.likedIds, savedRecommendationIds: [recommended.id],
+      history: state.history, recommendationHistory: [{ id: recommended.id, choice: 'like' }] });
+  })()`));
+  assert.equal(favorites.length, 2);
+  assert.equal(new Set(favorites.map((item) => item.image)).size, 2);
+});
+
+test('a liked result look stays in the collection after restarting diagnosis', () => {
   const app = appHarness();
   app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; renderResult()");
   const first = app.evaluate('resultStyleLooks()[0]');
-  assert.ok(first?.styleId);
-  assert.ok(app.elements.get('app').innerHTML.includes('id="resultSwipeCard"'));
-  const before = app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).percentage`);
-  app.evaluate(`recordResultChoice(${JSON.stringify(first.id)}, 'no')`);
-  assert.equal(app.evaluate("state.recommendationHistory.at(-1).source"), 'result');
-  assert.equal(app.evaluate('state.resultLastChange.before'), before);
-  assert.ok(app.evaluate('state.resultLastChange.after') < before);
-  assert.ok(Array.from(app.evaluate('resultStyleLooks()')).every((look) => look.id !== first.id));
-  assert.equal(app.evaluate('state.resultLastChange.nextLabel'), app.evaluate('resultStyleLooks()[0].label'));
-  assert.ok(app.elements.get('app').innerHTML.includes('result-swipe-change'));
-  app.evaluate('undoResultChoice()');
-  assert.equal(app.evaluate('state.recommendationHistory.length'), 0);
-  assert.equal(app.evaluate('state.resultLastChange'), null);
-  assert.equal(app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).percentage`), before);
-  assert.equal(app.evaluate('resultStyleLooks()[0].id'), first.id);
+  app.evaluate(`recordSuggestedLook(${JSON.stringify(first.id)}, 'like')`);
+  assert.ok(Array.from(app.evaluate('state.favoriteLooks')).some(item => item.id === first.id));
+  app.evaluate('resetDiagnosis()');
+  assert.ok(Array.from(app.evaluate('state.favoriteLooks')).some(item => item.id === first.id));
+  assert.equal(app.evaluate('state.likedIds.length'), 0);
 });
 
-test('結果の保留は割合を変えず、Picture に渡す系統の重みは回答後に更新される', () => {
+test('removing a photo from the collection does not mark it disliked', () => {
   const app = appHarness();
-  app.evaluate("state.profile.gender = 'men'; state.sessionCompleted = true; window.KonomiBrandFeed = { render({ styles }) { window.pictureStyles = styles; } }; renderSaved()");
-  const first = app.evaluate('resultStyleLooks()[0]');
-  const before = app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).weight`);
-  app.evaluate(`recordResultChoice(${JSON.stringify(first.id)}, 'skip')`);
-  assert.equal(app.evaluate('state.resultLastChange.before'), app.evaluate('state.resultLastChange.after'));
-  assert.equal(app.evaluate(`resultStyleStats().find(style => style.id === ${JSON.stringify(first.styleId)}).weight`), before);
-  assert.ok(Array.from(app.evaluate('resultStyleLooks()')).every((look) => look.id !== first.id));
-  app.evaluate('undoResultChoice()');
-  app.evaluate(`recordResultChoice(${JSON.stringify(first.id)}, 'no'); renderSaved()`);
-  const after = app.evaluate(`window.pictureStyles.find(style => style.id === ${JSON.stringify(first.styleId)}).score`);
-  assert.ok(after < before);
-});
-
-test('結果カードを右へスワイプすると好きの回答として記録する', () => {
-  const app = appHarness();
-  const choice = app.evaluate(`(() => {
-    state.profile.gender = 'men'; state.route = 'result'; state.sessionCompleted = true;
-    const look = resultStyleLooks()[0];
-    const handlers = {};
-    const card = { dataset: { lookId: look.id }, style: { setProperty() {}, removeProperty() {} },
-      classList: { add() {}, contains() { return false; } },
-      addEventListener(type, handler) { handlers[type] = handler; }, setPointerCapture() {} };
-    app.querySelector = (selector) => selector === '#resultSwipeCard' ? card : null;
-    app.contains = () => true;
-    window.setTimeout = (callback) => callback();
-    setupResultSwipeGesture();
-    handlers.pointerdown({ clientX: 0, clientY: 0, pointerId: 1 });
-    handlers.pointermove({ clientX: 120, clientY: 0 });
-    handlers.pointerup({ clientX: 120, clientY: 0 });
-    return state.recommendationHistory.at(-1)?.choice;
-  })()`);
-  assert.equal(choice, 'like');
+  const id = app.evaluate('state.likedIds[0]');
+  app.evaluate(`removeFavorite(${JSON.stringify(id)}); renderResult()`);
+  assert.equal(app.evaluate('state.favoriteLooks.length'), 0);
+  assert.ok(Array.from(app.evaluate('state.likedIds')).includes(id));
+  assert.match(app.elements.get('app').innerHTML, /favorite-looks-empty/);
 });
 
 test("追加診断の終了画面で分析とブランドが一致する写真付きの候補を提示する", () => {

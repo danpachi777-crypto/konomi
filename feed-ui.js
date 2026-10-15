@@ -24,13 +24,16 @@
     catch { return null; }
   }
   function feedback(context, card, choice, button) {
-    const { state, persist } = context;
+    const { state, persist, saveFavorite, removeFavorite } = context;
     const id = 'r-' + card.id;
     state.recommendationHistory = (state.recommendationHistory || []).filter(entry => entry.id !== id);
     state.recommendationHistory.push({ id, choice, details: {}, createdAt: new Date().toISOString() });
     state.savedRecommendationIds ||= [];
     state.savedRecommendationIds = state.savedRecommendationIds.filter(value => value !== id);
-    if (choice === 'like') state.savedRecommendationIds.push(id);
+    if (choice === 'like') {
+      state.savedRecommendationIds.push(id);
+      saveFavorite(card, id);
+    } else removeFavorite(id);
     window.konomiCloudSync?.record(id, choice);
     persist();
     if (choice === 'no') button.closest('article')?.remove();

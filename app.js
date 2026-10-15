@@ -58,19 +58,20 @@ const defaultState = {
   recommendationQueue: [],
   recommendationReasons: {},
   recommendationRound: 0,
-  resultLastChange: null,
   diagnosisIds: [],
   diagnosisVersion: 4,
   productFeedback: {},
-  brandDiscovery: "all",
+  favoriteLooks: null,
   occasion: "休日",
   profileCompleted: false,
   profile: { ...defaultProfile }
 };
 
 let state = loadState();
+state.favoriteLooks ??= migrateFavoriteLooks(state);
 let fashionPreference = null;
 let toastTimer;
+let favoriteExpanded = false;
 const researchedShopAreas = ["下北沢", "高円寺", "原宿", "吉祥寺"];
 const shopStyleChoices = ["あなた向け", "すべて", "アメカジ", "ヴィンテージ", "ストリート", "モード", "ガーリー", "ロック", "レトロ", "ミリタリー", "ワーク", "ヨーロッパ古着", "ブランド古着", "カジュアル", "個性的"];
 let shopBrowseArea = "";
@@ -136,7 +137,8 @@ function loadState() {
       const profile = { ...defaultProfile, ...(stored.profile || {}) };
       return { ...defaultState, profile, profileCompleted: true, route: "swipe",
         diagnosisIds: diagnosisQueue(diagnosisPool, profile.gender || "all"),
-        brandDiscovery: stored.brandDiscovery || "all", occasion: stored.occasion || profile.occasion };
+        favoriteLooks: Array.isArray(stored.favoriteLooks) ? stored.favoriteLooks : migrateFavoriteLooks(stored),
+        occasion: stored.occasion || profile.occasion };
     }
     return {
       ...defaultState,
@@ -158,6 +160,38 @@ function persist(options = {}) {
   }
   try { stateStorage.save(state); }
   catch { console.warn('Local state could not be saved; this session remains usable.'); }
+}
+
+function favoriteSnapshot(item, id = item?.id, savedAt = new Date().toISOString()) {
+  if (!item?.image || !id) return null;
+  return { id, image: item.image, label: item.label || item.name || item.category || '好きな服',
+    brand: item.brand || '', category: item.category || '',
+    sourceUrl: item.sourceUrl || item.url || '', savedAt };
+}
+
+function migrateFavoriteLooks(source) {
+  const records = [...(source.history || []), ...(source.recommendationHistory || [])];
+  const ids = [...new Set([...(source.likedIds || []), ...(source.savedRecommendationIds || [])])];
+  const byImage = new Map();
+  for (const id of ids) {
+    const item = cards.find((card) => card.id === id) || recommendations.find((look) => look.id === id);
+    const savedAt = records.filter((entry) => entry.id === id && entry.choice === 'like').at(-1)?.createdAt || null;
+    const favorite = favoriteSnapshot(item, id, savedAt);
+    if (favorite) byImage.set(favorite.image, favorite);
+  }
+  return [...byImage.values()];
+}
+
+function saveFavorite(item, id = item?.id) {
+  const favorite = favoriteSnapshot(item, id);
+  if (!favorite) return;
+  state.favoriteLooks = (state.favoriteLooks || []).filter((saved) =>
+    saved.id !== favorite.id && saved.image !== favorite.image);
+  state.favoriteLooks.unshift(favorite);
+}
+
+function removeFavorite(id) {
+  state.favoriteLooks = (state.favoriteLooks || []).filter((saved) => saved.id !== id);
 }
 
 // Storage boundary: replace this adapter (and the preference adapter) for future Auth/Supabase.
@@ -288,8 +322,10 @@ function resultStyleLooks(limit = 20) {
   const inputs = recommendationInputs();
   const seen = [...diagnosisCards().map((card) => `r-${card.id}`),
     ...state.recommendationHistory.map((entry) => entry.id)];
+  const favoriteImages = new Set((state.favoriteLooks || []).map((item) => item.image));
   const candidates = selectNovelLooks(recommendations, inputs.cards, inputs.likedIds,
-    state.profile.gender || 'all', seen, recommendations.length);
+    state.profile.gender || 'all', seen, recommendations.length)
+    .filter((look) => !favoriteImages.has(look.image));
   const shownStyles = state.recommendationHistory.filter((entry) => entry.source === 'result')
     .map((entry) => recommendations.find((look) => look.id === entry.id)?.styleId).filter(Boolean);
   return selectStyleWeightedLooks(candidates, resultStyleStats(), shownStyles, limit);
@@ -324,6 +360,7 @@ function setRoute(route) {
   if (route === "result" && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
   if ((route === "discover" || route === "saved" || route === "looks" || route === "wardrobe" || route === "map") && !state.sessionCompleted) route = state.current ? "swipe" : state.profileCompleted ? "profile" : "home";
   if (state.route !== route && ["looks", "wardrobe"].includes(state.route)) window.KonomiFeedUI?.clearResources();
+  if (route === "result" && state.route !== route) favoriteExpanded = false;
   state.route = route;
   persist();
   render();
@@ -340,7 +377,6 @@ function resetDiagnosis() {
   state.recommendationQueue = [];
   state.recommendationReasons = {};
   state.recommendationRound = 0;
-  state.resultLastChange = null;
   state.diagnosisIds = state.profileCompleted
     ? diagnosisQueue(diagnosisPool, state.profile.gender || "all") : [];
   state.productFeedback = {};
@@ -662,9 +698,13 @@ function animateChoice(choice) {
 function recordChoice(choice) {
   const card = diagnosisCards()[state.current];
   if (!card || !["like", "no", "skip"].includes(choice)) return;
-  state.history.push({ id: card.id, choice, createdAt: new Date().toISOString() });
+  const favoriteBefore = (state.favoriteLooks || []).find((saved) => saved.image === card.image) || null;
+  state.history.push({ id: card.id, choice, favoriteBefore, createdAt: new Date().toISOString() });
   window.konomiCloudSync?.record(card.id, choice);
-  if (choice === "like" && !state.likedIds.includes(card.id)) state.likedIds.push(card.id);
+  if (choice === "like") {
+    if (!state.likedIds.includes(card.id)) state.likedIds.push(card.id);
+    saveFavorite(card);
+  }
   state.current += 1;
   persist();
   renderSwipe();
@@ -675,7 +715,11 @@ function undoChoice() {
   if (!last) return;
   window.konomiCloudSync?.record(last.id, null);
   state.current = Math.max(0, state.current - 1);
-  if (last.choice === "like") state.likedIds = state.likedIds.filter((id) => id !== last.id);
+  if (last.choice === "like") {
+    state.likedIds = state.likedIds.filter((id) => id !== last.id);
+    removeFavorite(last.id);
+    if (last.favoriteBefore) state.favoriteLooks.unshift(last.favoriteBefore);
+  }
   state.sessionCompleted = false;
   persist({ keepVisible: true });
   renderSwipe();
@@ -903,33 +947,25 @@ function renderMap() {
   });
 }
 
-function resultSwipeHTML(styles, look, inputs) {
-  const change = state.recommendationHistory.at(-1)?.source === 'result' ? state.resultLastChange : null;
-  const matchedStyle = styles.find((style) => style.id === look?.styleId);
-  const evidence = look?.evidenceIds?.map((id) => inputs.cards.find((card) => card.id === id))
-    .filter(Boolean).slice(0, 2) || [];
-  const canUndo = state.recommendationHistory.at(-1)?.source === 'result';
-  return `<section class="result-swipe" aria-label="結果に沿った服を選ぶ">
-    <div class="result-swipe-heading"><div><p class="eyebrow">REFINE YOUR STYLE</p>
-      <h2>好きな系統を、もう少し絞る。</h2>
-      <p>各系統で「好き」と答えた割合と回答数をもとに、まだ見ていない服を表示します。答えるたびに結果と「探す」が更新されます。</p></div>
-      <button type="button" class="text-button" id="resultSwipeUndo" ${canUndo ? '' : 'disabled'}>結果での前回回答を戻す</button>
-    </div>
-    <div class="result-style-ratios">${styles.slice(0, 3).map((style) => `<div><strong>${escapeHTML(style.name)}</strong><b>${style.percentage}%</b><small>好き ${style.likes}/${style.answered}枚</small></div>`).join('')}</div>
-    ${change ? `<p class="result-swipe-change" role="status">${escapeHTML(change.styleName)}：${change.before}% → ${change.after}%${change.choice === 'skip' ? '（保留なので割合は変わりません）' : ''}${change.nextLabel ? `。次は「${escapeHTML(change.nextLabel)}」を提案` : '。未回答の候補は見終えました'}</p>` : ''}
-    ${look ? `<div class="result-swipe-layout">
-      <article class="result-swipe-card" id="resultSwipeCard" data-look-id="${escapeHTML(look.id)}" tabindex="0" aria-label="${escapeHTML(look.label)}。左へスワイプで好みと違う、右へスワイプで好き">
-        <img src="${escapeHTML(look.image)}" alt="${escapeHTML(look.label)}のコーディネート" draggable="false">
-        <span class="result-swipe-stamp result-swipe-no" aria-hidden="true">違う</span>
-        <span class="result-swipe-stamp result-swipe-like" aria-hidden="true">好き</span>
-      </article>
-      <div class="result-swipe-copy"><p class="eyebrow">NEXT LOOK</p><h3>${escapeHTML(look.label)}</h3>
-        <p>${matchedStyle ? `「${escapeHTML(matchedStyle.name)}」好き ${matchedStyle.likes}/${matchedStyle.answered}枚（${matchedStyle.percentage}%）から選びました。` : escapeHTML(look.reason)}</p>
-        ${evidence.length ? `<p class="result-swipe-evidence">好きと答えた服：${evidence.map((card) => escapeHTML(card.label || card.name || card.category)).join('・')}</p>` : ''}
-        <p class="result-swipe-hint">← 好みと違う　/　好き →</p>
-        <div class="result-swipe-actions"><button type="button" data-result-choice="no">好みと違う</button><button type="button" data-result-choice="skip">保留</button><button type="button" data-result-choice="like">好き</button></div>
-      </div>
-    </div>` : `<p class="result-swipe-empty">${styles.length ? 'この系統の未回答写真は、いまある候補を見終えました。' : '好きな服を選ぶと、系統に沿った候補を表示します。'}</p>`}
+function favoriteLooksHTML() {
+  const favorites = (state.favoriteLooks || []).filter((item) => item?.image && item?.id)
+    .sort((a, b) => (Date.parse(b.savedAt) || 0) - (Date.parse(a.savedAt) || 0));
+  return `<section class="favorite-looks" aria-labelledby="favoriteLooksTitle">
+    <div class="section-title"><div><p class="eyebrow">YOUR LIKES</p><h2 id="favoriteLooksTitle">Likeした服</h2></div><span>${favorites.length}枚</span></div>
+    <p class="favorite-looks-intro">診断・結果・「探す」でLikeした服を、ここで見返せます。診断をやり直しても残ります。</p>
+    ${favorites.length ? `<div class="favorite-looks-grid${favoriteExpanded ? '' : ' is-preview'}" id="favoriteLooksGrid">${(favoriteExpanded ? favorites : favorites.slice(0, 1)).map((item) => {
+      const sourceUrl = safeExternalUrl(item.sourceUrl);
+      const savedDate = item.savedAt && !Number.isNaN(Date.parse(item.savedAt))
+        ? new Date(item.savedAt).toLocaleDateString('ja-JP') : '';
+      return `<article class="favorite-look-card">
+        <img src="${escapeHTML(item.image)}" alt="${escapeHTML(item.label)}" loading="lazy">
+        <div class="favorite-look-copy"><span>${escapeHTML(item.brand || item.category || '好きな服')}</span>
+          <h3>${escapeHTML(item.label)}</h3>${savedDate ? `<small>Like ${savedDate}</small>` : ''}
+          <div class="favorite-look-actions">${sourceUrl !== '#' ? `<a href="${sourceUrl}" target="_blank" rel="noopener noreferrer">掲載元を見る ↗</a>` : ''}
+            <button type="button" data-remove-favorite="${escapeHTML(item.id)}">一覧から外す</button></div>
+        </div></article>`;
+    }).join('')}</div>${favorites.length > 1 ? `<button class="secondary-button favorite-more" type="button" id="favoriteMore" aria-controls="favoriteLooksGrid" aria-expanded="${favoriteExpanded}">${favoriteExpanded ? '閉じる' : '詳しく見る'}</button>` : ''}`
+      : '<p class="favorite-looks-empty">まだLikeした服はありません。診断・結果・「探す」で好きな服を選ぶと、ここに表示します。</p>'}
   </section>`;
 }
 
@@ -943,9 +979,7 @@ function renderResult() {
     ? `好きと答えた写真から、${answeredStyles.slice(0, 2).map((style) => style.name).join("・")}が好みに近いと分かりました。この系統の服を優先して提案します。`
     : "好きと答えた服がまだ少ないため、提案は比較用の候補です。診断をやり直して気になる服を選んでみてください。";
   const analyzedLooks = resultStyleLooks();
-  const productPool = products.filter((product) => state.productFeedback?.[product.id] !== "no" &&
-    (state.brandDiscovery !== "specialist" || product.specialist));
-  const productRecommendations = selectDiscoveryRecommendations(productPool, inputs.cards, inputs.likedIds, state.profile.gender, state.profile.budget, state.productFeedback, 6);
+  const heroPhotos = analyzedLooks.slice(0, 3);
   const tags = tasteProfile.topTags;
   app.innerHTML = `
     <section class="result-screen">
@@ -963,13 +997,13 @@ function renderResult() {
           </div>
           ${answeredStyles.length ? '<p class="shop-note">各系統で判断した写真のうち、好きと答えた割合です。保留は含めません。</p>' : ''}
         </div>
-        <div class="result-photo-stack" aria-label="診断から分析したおすすめコーデ">
-          ${analyzedLooks.slice(0, 3).map((look, index) => `<img style="--i:${index}" src="${look.image}" alt="${look.label}">`).join("")}
-          <span>${analyzedLooks.length ? "好きな服に近い、未回答の服" : "新しい写真候補が必要です"}</span>
+        <div class="result-photo-stack" aria-label="好みに近い未回答の服">
+          ${heroPhotos.map((look, index) => `<img style="--i:${index}" src="${escapeHTML(look.image)}" alt="${escapeHTML(look.label)}">`).join("")}
+          <span>${heroPhotos.length ? "好みに近い、未回答の服" : "新しい写真候補が必要です"}</span>
         </div>
       </div>
 
-      ${resultSwipeHTML(answeredStyles, analyzedLooks[0], inputs)}
+      ${favoriteLooksHTML()}
 
       ${diagnosisAnalysisHTML(inputs)}
       <button class="secondary-button" type="button" data-route="analysis">あなたが好きそうな系統・好みを見る <span aria-hidden="true">→</span></button>
@@ -982,24 +1016,6 @@ function renderResult() {
         <button class="primary-button" type="button" data-route="saved">好みに合うブランド写真を見る <span>→</span></button>
       </section>
 
-      <section class="novel-looks-section">
-        <div class="section-title"><div><p class="eyebrow">BECAUSE YOU LIKED</p><h2>こういう服は、どうですか？</h2></div></div>
-        <p class="shop-note">未回答の写真から、好みに近い服と新しい方向を比較できます。STYLE SCOREは保存済み画像特徴との近さで、センスや確率を示す点数ではありません。</p>
-        <div class="novel-looks-grid">
-          ${analyzedLooks.slice(0, 6).map((look) => {
-            const evidence = look.evidenceIds.map((id) => inputs.cards.find((card) => card.id === id)).filter(Boolean);
-            return `<article class="novel-look-card">
-              <img class="novel-look-photo" src="${look.image}" alt="${escapeHTML(look.label)}" loading="lazy">
-              <div class="novel-look-copy"><h3>${escapeHTML(look.label)}</h3><p>${escapeHTML(look.reason)}</p>
-                ${styleScoreHTML(look.id)}
-                <div class="liked-evidence">${evidence.map((card) => `<span>${card.image ? `<img src="${card.image}" alt="" loading="lazy">` : ""}<small>好きと答えた：${escapeHTML(card.label || card.name || card.features.join("・"))}</small></span>`).join("")}</div>
-                <div class="recommendation-feedback"><button type="button" data-look-id="${look.id}" data-look-choice="like">着てみたい</button><button type="button" data-look-id="${look.id}" data-look-choice="no">好みと違う</button></div>
-              </div></article>`;
-          }).join("")}
-        </div>
-        ${!analyzedLooks.length ? `<p class="shop-note">${preference.likedCards.length ? "好みとの共通点がある未回答の写真候補がなくなりました。同じ服を新しい提案として出すことはしません。下の公式ブランド一覧から別の服を探せますが、写真候補の拡充が必要です。" : "まだ好みの根拠がないため、おすすめを決めつけません。初回診断で好きな服を選ぶか、服の好きな部分を教えてください。"}</p>` : ""}
-      </section>
-
       <div class="profile-summary">
         <span>${ageLabel(state.profile.ageRange)}</span>
         <span>${genderLabel(state.profile.gender)}</span>
@@ -1008,80 +1024,11 @@ function renderResult() {
         <button type="button" id="editProfileButton">設定を変更</button>
       </div>
 
-      <div class="result-grid">
-        <section class="result-panel taste-panel">
-          <div class="section-title">
-            <div><p class="eyebrow">YOUR CHOICES</p><h2>好きな服に多い特徴</h2></div>
-            <span>好きと答えた服 ${preference.likedCards.length}枚</span>
-          </div>
-          <div class="meter-list">
-            ${tags.slice(0, 4).map((item) => `
-              <div class="meter-item">
-                <div><span>${escapeHTML(item.tag)}</span><b>${item.count}枚</b></div>
-              </div>`).join("")}
-            ${!tags.length ? '<p class="muted-copy">好きと答えた服が増えると、その写真に付いた特徴を表示します。</p>' : ''}
-          </div>
-          ${tags.length ? '<p class="shop-note">選んだ写真に付いたタグを数えています。好みの割合ではありません。</p>' : ''}
-        </section>
-
-        <section class="result-panel recipe-panel">
-          <div class="section-title">
-            <div><p class="eyebrow">YOUR NEXT CHOICE</p><h2>次に見比べたい服</h2></div>
-          </div>
-          <p class="shop-note">診断とおすすめへの回答から選んでいます。組み合わせが合うかは、実物の色・サイズも見比べてください。</p>
-          <ol class="recipe-list">
-            ${productRecommendations.slice(0, 4).map((item, index) => `<li><span>0${index + 1}</span><b>${escapeHTML(item.name)}<small class="recipe-detail">${escapeHTML(item.experiment)}</small></b></li>`).join("")}
-          </ol>
-          <button class="dark-button" type="button" data-route="discover">服を見て好みを絞る <span>→</span></button>
-        </section>
+      <div class="result-links">
+        <button class="secondary-button brand-directory-entry" type="button" data-route="brands">26系統・94ブランドをすべて見る <span aria-hidden="true">↗</span></button>
+        <button class="secondary-button" type="button" data-route="map">近くの服屋・古着屋をマップで見る <span aria-hidden="true">→</span></button>
       </div>
 
-      <section class="shop-section">
-        <div class="shop-heading">
-          <div>
-            <p class="eyebrow">REAL ITEMS FOR YOU</p>
-            <h2>次に興味が広がりそうな服。</h2>
-            <p>好きだった特徴を手がかりに、専門ブランドを優先して選びました。何を見るとよさそうか、どこを変えると新しい発見があるかまで提案します。</p>
-          </div>
-          <span class="verified-badge">公式情報へのリンク</span>
-        </div>
-        <div class="brand-discovery-control"><label for="brandDiscovery">ブランドの探し方</label><select id="brandDiscovery"><option value="all" ${selected(state.brandDiscovery, "all")}>すべてのブランドから</option><option value="specialist" ${selected(state.brandDiscovery, "specialist")}>今回調べた専門ブランドを中心に</option></select></div>
-        <div class="product-grid">
-          ${!productRecommendations.length ? '<p class="shop-note">今の回答と条件から、根拠を持っておすすめできる候補がありません。追加診断で気になる服や部分を教えるか、ブランドの探し方を広げてみてください。</p>' : ""}
-          ${productRecommendations.map((product, index) => `
-            <article class="product-card">
-              <div class="product-index">${String(index + 1).padStart(2, "0")}</div>
-              <div class="product-meta"><span>${product.brand}</span><span>${product.category}</span></div>
-              <h3>${product.name}</h3>
-              <p>${escapeHTML(product.discoveryReason)}</p>
-              <p class="discovery-experiment">${escapeHTML(product.experiment)}</p>
-              ${product.sourceSummary ? `<small class="brand-source">公式で確認：${escapeHTML(product.sourceSummary)}<br>確認日 ${product.checkedAt} · 相性は回答からの推定</small>` : ""}
-              <small class="recommendation-evidence">${product.evidenceIds.map((id) => inputs.cards.find((card) => card.id === id)?.label).filter(Boolean).map(escapeHTML).join(" / ")}</small>
-              ${product.budgetMismatch ? '<small class="budget-note">目安の価格帯は設定予算と異なります。古着・セールも比較してください。</small>' : ""}
-              <div class="product-tags">${(product.matches.length ? product.matches : product.tags.slice(0, 2)).map((tag) => `<span>#${tag}</span>`).join("")}</div>
-              <a href="${product.url}" target="_blank" rel="noopener noreferrer">公式で取り扱いを見る <span aria-hidden="true">↗</span></a>
-              <div class="recommendation-feedback"><button type="button" data-product-id="${product.id}" data-product-choice="like" aria-pressed="${state.productFeedback?.[product.id] === "like"}">気になる</button><button type="button" data-product-id="${product.id}" data-product-choice="no">好みと違う</button></div>
-            </article>`).join("")}
-        </div>
-        <p class="shop-note">ブランド／取り扱い一覧への案内です。写真の服と同じ商品であることや、在庫・価格を保証するものではありません。</p>
-        <button class="secondary-button brand-directory-entry" type="button" data-route="brands">26系統・94ブランドをすべて見る <span aria-hidden="true">↗</span></button>
-      </section>
-
-      <button class="secondary-button" type="button" data-route="map">近くの服屋・古着屋をマップで見る <span aria-hidden="true">→</span></button>
-
-      <section class="recommend-section">
-        <div class="section-title">
-          <div><p class="eyebrow">ANALYZED LOOKS</p><h2>あなた向けコーデの一部</h2></div>
-          <button class="text-button" type="button" id="restartButton">診断し直す</button>
-        </div>
-        <div class="recommend-grid">
-          ${analyzedLooks.slice(0, 4).map((look) => `
-            <button type="button" class="recommend-card" data-route="discover">
-              <img src="${look.image}" alt="${look.label}" loading="lazy">
-              <span>${look.label}<b>→</b></span>
-            </button>`).join("")}
-        </div>
-      </section>
     </section>
   `;
 
@@ -1093,113 +1040,41 @@ function renderResult() {
     });
   });
   bindRouteButtons();
-  setupResultSwipeGesture();
-  app.querySelectorAll('[data-result-choice]').forEach((button) => button.addEventListener('click', () =>
-    animateResultChoice(button.dataset.resultChoice)));
-  app.querySelector('#resultSwipeUndo')?.addEventListener('click', undoResultChoice);
-  document.getElementById("brandDiscovery").addEventListener("change", (event) => {
-    state.brandDiscovery = event.target.value;
-    persist();
+  app.querySelector('#favoriteMore')?.addEventListener('click', () => {
+    favoriteExpanded = !favoriteExpanded;
     renderResult();
   });
-  document.querySelectorAll("[data-product-choice]").forEach((button) => button.addEventListener("click", () => {
-    state.productFeedback ||= {};
-    state.productFeedback[button.dataset.productId] = button.dataset.productChoice;
+  app.querySelectorAll('[data-remove-favorite]').forEach((button) => button.addEventListener('click', () => {
+    removeFavorite(button.dataset.removeFavorite);
     persist();
     renderResult();
-    showToast("回答を次のおすすめに反映しました");
   }));
-  document.querySelectorAll("[data-look-choice]").forEach((button) => button.addEventListener("click", () => {
-    recordSuggestedLook(button.dataset.lookId, button.dataset.lookChoice);
-  }));
-  document.getElementById("restartButton").addEventListener("click", resetDiagnosis);
   document.getElementById("quickRestartButton").addEventListener("click", resetDiagnosis);
   document.getElementById("editProfileButton").addEventListener("click", editProfile);
   app.querySelectorAll([
-    ".result-hero .tag-row", ".result-photo-stack > span",
+    ".result-hero .tag-row",
     ".result-screen > .diagnosis-analysis", ".discover-invite p",
-    ".novel-looks-section > .shop-note", ".novel-look-copy > h3",
-    ".novel-look-copy > p", ".novel-look-copy .style-score",
-    ".novel-look-copy .liked-evidence", ".profile-summary > span"
+    ".profile-summary > span"
   ].join(",")).forEach((element) => element.remove());
   const moreLooksHeading = app.querySelector(".discover-invite h2");
   if (moreLooksHeading) moreLooksHeading.textContent = "もっと写真を見る";
-}
-
-function setupResultSwipeGesture() {
-  const card = app.querySelector('#resultSwipeCard');
-  if (!card) return;
-  let start = null;
-  card.addEventListener('pointerdown', (event) => {
-    start = { x: event.clientX, y: event.clientY };
-    card.setPointerCapture(event.pointerId);
-  });
-  card.addEventListener('pointermove', (event) => {
-    if (!start) return;
-    const dx = event.clientX - start.x;
-    const dy = event.clientY - start.y;
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 20) {
-      start = null;
-      card.style.transform = '';
-      card.style.removeProperty('--drag');
-      delete card.dataset.direction;
-      return;
-    }
-    card.style.transform = `translateX(${dx}px) rotate(${dx / 24}deg)`;
-    card.style.setProperty('--drag', Math.min(1, Math.abs(dx) / 110));
-    card.dataset.direction = dx > 0 ? 'right' : 'left';
-  });
-  const finish = (event) => {
-    if (!start) return;
-    const dx = event.clientX - start.x;
-    start = null;
-    if (Math.abs(dx) > 95) animateResultChoice(dx > 0 ? 'like' : 'no');
-    else {
-      card.style.transform = '';
-      card.style.removeProperty('--drag');
-      delete card.dataset.direction;
-    }
-  };
-  card.addEventListener('pointerup', finish);
-  card.addEventListener('pointercancel', () => {
-    start = null;
-    card.style.transform = '';
-    card.style.removeProperty('--drag');
-    delete card.dataset.direction;
-  });
-  card.addEventListener('keydown', (event) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    animateResultChoice(event.key === 'ArrowRight' ? 'like' : 'no');
-  });
-}
-
-function animateResultChoice(choice) {
-  const card = app.querySelector('#resultSwipeCard');
-  if (!card) return;
-  if (choice === 'skip') return recordResultChoice(card.dataset.lookId, choice);
-  if (card.classList.contains('is-leaving')) return;
-  card.classList.add('is-leaving', choice === 'like' ? 'leave-right' : 'leave-left');
-  window.setTimeout(() => {
-    if (state.route === 'result' && app.contains(card)) recordResultChoice(card.dataset.lookId, choice);
-  }, 160);
 }
 
 function recordResultChoice(id, choice) {
   if (!['like', 'no', 'skip'].includes(choice)) return;
   const look = resultStyleLooks().find((item) => item.id === id);
   if (!look) return;
-  const before = resultStyleStats().find((style) => style.id === look.styleId);
   state.recommendationHistory.push({ id, choice, source: 'result', details: {},
     wasSaved: state.savedRecommendationIds.includes(id), createdAt: new Date().toISOString() });
   window.konomiCloudSync?.record(id, choice);
-  if (choice === "like" && !state.savedRecommendationIds.includes(id)) state.savedRecommendationIds.push(id);
-  if (choice === 'no') state.savedRecommendationIds = state.savedRecommendationIds.filter((savedId) => savedId !== id);
-  const after = resultStyleStats().find((style) => style.id === look.styleId);
-  const nextLook = resultStyleLooks()[0];
-  state.resultLastChange = { styleName: before?.name || look.category || 'この系統',
-    before: before?.percentage || 0, after: after?.percentage || 0, choice,
-    nextLabel: nextLook?.label || null };
+  if (choice === "like") {
+    if (!state.savedRecommendationIds.includes(id)) state.savedRecommendationIds.push(id);
+    saveFavorite(look);
+  }
+  if (choice === 'no') {
+    state.savedRecommendationIds = state.savedRecommendationIds.filter((savedId) => savedId !== id);
+    removeFavorite(id);
+  }
   // 結果画面で新しい回答が来たら、次のバッチも新しい好みで選び直す。
   state.recommendationQueue = [];
   state.recommendationCurrent = 0;
@@ -1207,24 +1082,11 @@ function recordResultChoice(id, choice) {
   state.recommendationCompleted = false;
   persist();
   renderResult();
-  showToast(choice === 'skip' ? '保留しました' : '割合と次のおすすめを更新しました');
+  showToast(choice === 'skip' ? '保留しました' : '次のおすすめを更新しました');
 }
 
 function recordSuggestedLook(id, choice) {
   recordResultChoice(id, choice);
-}
-
-function undoResultChoice() {
-  if (state.recommendationHistory.at(-1)?.source !== 'result') return;
-  const last = state.recommendationHistory.pop();
-  if (last.wasSaved) {
-    if (!state.savedRecommendationIds.includes(last.id)) state.savedRecommendationIds.push(last.id);
-  } else state.savedRecommendationIds = state.savedRecommendationIds.filter((id) => id !== last.id);
-  window.konomiCloudSync?.record(last.id, null);
-  state.resultLastChange = null;
-  persist();
-  renderResult();
-  showToast('直前の回答を戻しました');
 }
 
 function renderDiscover() {
@@ -1512,11 +1374,19 @@ function recordRecommendationChoice(choice) {
     return;
   }
   const previousAnswer = state.recommendationHistory.find((entry) => entry.id === look.id);
+  const favoriteBefore = (state.favoriteLooks || []).find((item) => item.id === look.id || item.image === look.image) || null;
   state.recommendationHistory = state.recommendationHistory.filter((entry) => entry.id !== look.id);
-  state.recommendationHistory.push({ id: look.id, choice, details, previousAnswer, wasSaved: state.savedRecommendationIds.includes(look.id), createdAt: new Date().toISOString() });
+  state.recommendationHistory.push({ id: look.id, choice, details, previousAnswer, favoriteBefore,
+    wasSaved: state.savedRecommendationIds.includes(look.id), createdAt: new Date().toISOString() });
   window.konomiCloudSync?.record(look.id, choice);
-  if (choice === "like" && !state.savedRecommendationIds.includes(look.id)) state.savedRecommendationIds.push(look.id);
-  if (choice === "no") state.savedRecommendationIds = state.savedRecommendationIds.filter((id) => id !== look.id);
+  if (choice === "like") {
+    if (!state.savedRecommendationIds.includes(look.id)) state.savedRecommendationIds.push(look.id);
+    saveFavorite(look);
+  }
+  if (choice === "no") {
+    state.savedRecommendationIds = state.savedRecommendationIds.filter((id) => id !== look.id);
+    removeFavorite(look.id);
+  }
   state.recommendationCurrent += 1;
   persist();
   renderDiscover();
@@ -1532,6 +1402,8 @@ function undoRecommendationChoice() {
   window.konomiCloudSync?.record(last.id, last.previousAnswer?.choice ?? originalAnswer?.choice ?? null);
   state.savedRecommendationIds = state.savedRecommendationIds.filter((id) => id !== last.id);
   if (last.wasSaved) state.savedRecommendationIds.push(last.id);
+  removeFavorite(last.id);
+  if (last.favoriteBefore) state.favoriteLooks.unshift(last.favoriteBefore);
   state.recommendationCompleted = false;
   persist({ keepVisible: true });
   renderDiscover();
@@ -1579,7 +1451,7 @@ function renderSaved() {
 }
 
 function renderLooks() {
-  void window.KonomiFeedUI.renderFeed({ app, state, setRoute, persist });
+  void window.KonomiFeedUI.renderFeed({ app, state, setRoute, persist, saveFavorite, removeFavorite });
 }
 
 function renderWardrobe() {
